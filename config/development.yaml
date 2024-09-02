@@ -111,15 +111,15 @@ server:
     # Note that you need to go in `frontend` and run your frontend build first,
     # e.g.: $ npm install & npm build
     #
-    # static:
-    #   enable: true
-    #   must_exist: true
-    #   precompressed: false
-    #   folder:
-    #     uri: "/"
-    #     path: "frontend/dist"
-    #   fallback: "frontend/dist/index.html"
-    #
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/"
+        path: "frontend/dist"
+      fallback: "frontend/dist/index.html"
+
     
 
 # Worker Configuration
