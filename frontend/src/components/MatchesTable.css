@@ -122,6 +122,17 @@ body {
   color: #9ca3af;
 }
 
+.match-id-link {
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+  
+.match-id-link:hover {
+    color: #93c5fd;
+    text-decoration: underline;
+}
+
 .loading,
 .error {
   text-align: center;

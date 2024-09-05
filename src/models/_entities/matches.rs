@@ -28,6 +28,10 @@ pub struct Model {
     pub server: Option<String>,
     pub game_type: Option<String>,
     pub match_outcome: Option<i32>,
+    pub winning_score: Option<i32>,
+    pub losing_score: Option<i32>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub stats_url: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
