@@ -3,11 +3,11 @@ use axum::debug_handler;
 use loco_rs::prelude::*;
 use sea_orm::EntityTrait;
 
-use crate::models::_entities::matches::{Entity};
+use crate::models::_entities::matches::{Entity, Column};
 
 #[debug_handler]
 pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(Entity::find().all(&ctx.db).await?)
+    format::json(Entity::find().filter(Column::GameType.eq("4v4")).all(&ctx.db).await?)
 }
 
 #[debug_handler]

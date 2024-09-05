@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { LocoSplash } from "./LocoSplash";
+import MatchesTable from "./components/MatchesTable";
 
 import "./index.css";
 
@@ -12,6 +13,7 @@ if (!root) {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <LocoSplash />
+    <h2>TFPugs</h2>
+    <MatchesTable />
   </React.StrictMode>,
 );

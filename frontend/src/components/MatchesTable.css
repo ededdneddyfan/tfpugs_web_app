@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+body {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.matches-container {
+  font-family: 'Inter', sans-serif;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.matches-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+.matches-table-wrapper {
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.matches-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 800px;
+}
+
+.matches-table th,
+.matches-table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #3a3a3a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matches-table th {
+  background-color: #333333;
+  font-weight: 600;
+  color: #ffffff;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.matches-table tr:last-child td {
+  border-bottom: none;
+}
+
+.matches-table tr.blue-win {
+  background-color: #1e3a8a;
+}
+
+.matches-table tr.red-win {
+  background-color: #7f1d1d;
+}
+
+.matches-table tr.draw {
+  background-color: #4b5563;
+}
+
+.teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 200px;
+}
+
+.blue-team,
+.red-team {
+  font-weight: 600;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blue-team {
+  color: #60a5fa;
+}
+
+.red-team {
+  color: #f87171;
+}
+
+.vs {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blue-score,
+.red-score {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.blue-score {
+  color: #60a5fa;
+}
+
+.red-score {
+  color: #f87171;
+}
+
+.score-separator {
+  margin: 0 8px;
+  color: #9ca3af;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+.error {
+  color: #f87171;
+}
