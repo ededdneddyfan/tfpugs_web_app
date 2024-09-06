@@ -7,6 +7,7 @@ mod m20231103_114510_notes;
 
 mod m20240902_030157_add_matches_table;
 mod m20240905_040043_update_matches_table_scores_stats;
+mod m20240906_042943_add_players_table;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20231103_114510_notes::Migration),
             Box::new(m20240902_030157_add_matches_table::Migration),
             Box::new(m20240905_040043_update_matches_table_scores_stats::Migration),
+            Box::new(m20240906_042943_add_players_table::Migration),
         ]
     }
 }

@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './MatchesTable.css';
+
+interface Player {
+  id: number;
+  discord_id: string;
+  player_name: string;
+  // Add other player fields as needed
+}
 
 interface Match {
   id: number;
@@ -21,6 +29,7 @@ type SortOrder = 'asc' | 'desc';
 const MatchesTable: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
+  const [players, setPlayers] = useState<Record<string, Player>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapFilter, setMapFilter] = useState<string>('');
@@ -30,25 +39,46 @@ const MatchesTable: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
+  const navigate = useNavigate();
+
+  const handlePlayerClick = (playerName: string) => {
+    navigate(`/player/${encodeURIComponent(playerName)}`);
+  };
+
   useEffect(() => {
-    setLoading(true);
-    fetch('/api/matches')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch matches');
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [matchesResponse, playersResponse] = await Promise.all([
+          fetch('/api/matches'),
+          fetch('/api/players')
+        ]);
+
+        if (!matchesResponse.ok || !playersResponse.ok) {
+          throw new Error('Failed to fetch data');
         }
-        return response.json();
-      })
-      .then(data => {
-        setMatches(data);
-        setFilteredMatches(data);
+
+        const matchesData = await matchesResponse.json();
+        const playersData = await playersResponse.json();
+
+        setMatches(matchesData);
+        setFilteredMatches(matchesData);
+        
+        const playersMap: Record<string, Player> = {};
+        playersData.forEach((player: Player) => {
+          playersMap[player.discord_id] = player;
+        });
+        setPlayers(playersMap);
+
         setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching matches:', error);
-        setError('Failed to load matches. Please try again later.');
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load data. Please try again later.');
         setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -87,9 +117,15 @@ const MatchesTable: React.FC = () => {
     }
   };
 
-  const truncateTeamName = (name: string | null) => {
-    if (!name) return '';
-    return name.length > 20 ? `${name.substring(0, 17)}...` : name;
+  const getTeamPlayers = (teamString: string | null) => {
+    if (!teamString) return [];
+    const discordIds = teamString.split(',').map(id => id.trim());
+    return discordIds.map(id => players[id]?.player_name || id);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
   };
 
   const getOutcomeClass = (outcome: number | null) => {
@@ -110,11 +146,6 @@ const MatchesTable: React.FC = () => {
     return { blueScore, redScore };
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-
   const uniqueMaps = Array.from(new Set(matches.map(match => match.map).filter(Boolean)));
   const uniqueServers = Array.from(new Set(matches.map(match => match.server).filter(Boolean)));
 
@@ -129,8 +160,8 @@ const MatchesTable: React.FC = () => {
           formatDate(match.created_at),
           match.map,
           match.server,
-          match.blue_team,
-          match.red_team,
+          getTeamPlayers(match.blue_team).join('; '),
+          getTeamPlayers(match.red_team).join('; '),
           blueScore,
           redScore,
           getOutcomeText(match.match_outcome)
@@ -227,13 +258,29 @@ const MatchesTable: React.FC = () => {
                   <td>{match.server}</td>
                   <td>
                     <div className="teams">
-                      <span className="blue-team" title={match.blue_team || ''}>
-                        {truncateTeamName(match.blue_team)}
-                      </span>
+                      <div className="blue-team">
+                        {getTeamPlayers(match.blue_team).map((player, index) => (
+                          <span 
+                            key={index} 
+                            className="player-name clickable" 
+                            onClick={() => handlePlayerClick(player)}
+                          >
+                            {player}
+                          </span>
+                        ))}
+                      </div>
                       <span className="vs">vs</span>
-                      <span className="red-team" title={match.red_team || ''}>
-                        {truncateTeamName(match.red_team)}
-                      </span>
+                      <div className="red-team">
+                        {getTeamPlayers(match.red_team).map((player, index) => (
+                          <span 
+                            key={index} 
+                            className="player-name clickable" 
+                            onClick={() => handlePlayerClick(player)}
+                          >
+                            {player}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </td>
                   <td>

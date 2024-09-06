@@ -4,4 +4,5 @@ pub mod prelude;
 
 pub mod matches;
 pub mod notes;
+pub mod players;
 pub mod users;

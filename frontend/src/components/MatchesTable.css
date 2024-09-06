@@ -74,17 +74,19 @@ body {
 
 .teams {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 200px;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .blue-team,
 .red-team {
-  font-weight: 600;
+  display: flex;
+  flex-direction: column;
   max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  flex-direction: column;
 }
 
 .blue-team {
@@ -96,10 +98,10 @@ body {
 }
 
 .vs {
+  align-self: center;
   font-size: 12px;
   color: #9ca3af;
-  margin: 0 8px;
-  flex-shrink: 0;
+  margin: 5px 0;
 }
 
 .score {
@@ -167,55 +169,91 @@ body {
   border-color: #60a5fa;
 }
 
-/* Add these new styles to your existing CSS */
-
-.filters {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+.player-name {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
-.filter-group {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
+.matches-table td {
+  padding: 12px 8px; /* Reduce horizontal padding */
 }
 
-.filter-group label {
-  margin-right: 10px;
-  color: #9ca3af;
+.player-name {
+  font-size: 11px; /* Slightly smaller font */
+  line-height: 1.2; /* Tighter line height */
 }
 
-.filters select,
-.filters input {
-  padding: 8px;
-  border: 1px solid #3a3a3a;
+.player-name.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.player-name.clickable:hover {
+  color: #93c5fd;
+}
+
+.player-matches-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background-color: #2a2a2a;
-  color: #ffffff;
-  border-radius: 4px;
-  margin-right: 10px;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  z-index: 1000;
 }
 
-.filters select:focus,
-.filters input:focus {
-  outline: none;
-  border-color: #60a5fa;
-}
-
-.download-csv {
-  padding: 8px 16px;
-  background-color: #3b82f6;
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #4b5563;
   color: #ffffff;
   border: none;
+  padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.close-button:hover {
+  background-color: #6b7280;
+}
+
+.player-matches-container .matches-table-wrapper {
+  margin-top: 20px;
+}
+
+.player-matches-container .matches-table tr.win {
+  background-color: #065f46;
+}
+
+.player-matches-container .matches-table tr.loss {
+  background-color: #7f1d1d;
+}
+
+.player-matches-container .matches-table tr.draw {
+  background-color: #4b5563;
+}
+
+.back-button {
+  display: inline-block;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background-color: #4b5563;
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 4px;
   transition: background-color 0.3s ease;
 }
 
-.download-csv:hover {
-  background-color: #2563eb;
+.back-button:hover {
+  background-color: #6b7280;
 }
 
 .loading,
