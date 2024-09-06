@@ -7,7 +7,7 @@ body {
 
 .matches-container {
   font-family: 'Inter', sans-serif;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -30,7 +30,6 @@ body {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 800px;
 }
 
 .matches-table th,
@@ -38,9 +37,6 @@ body {
   padding: 16px;
   text-align: left;
   border-bottom: 1px solid #3a3a3a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .matches-table th {
@@ -49,6 +45,15 @@ body {
   color: #ffffff;
   text-transform: uppercase;
   font-size: 12px;
+}
+
+.matches-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.matches-table th.sortable:hover {
+  background-color: #444444;
 }
 
 .matches-table tr:last-child td {
@@ -123,14 +128,94 @@ body {
 }
 
 .match-id-link {
-    color: #60a5fa;
-    text-decoration: none;
-    transition: color 0.3s ease;
-  }
-  
+  color: #60a5fa;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
 .match-id-link:hover {
-    color: #93c5fd;
-    text-decoration: underline;
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.filters select,
+.filters input {
+  padding: 8px;
+  border: 1px solid #3a3a3a;
+  background-color: #2a2a2a;
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+.filters select {
+  margin-right: 10px;
+}
+
+.filters input[type="date"] {
+  margin-right: 10px;
+}
+
+.filters select:focus,
+.filters input:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+/* Add these new styles to your existing CSS */
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.filter-group label {
+  margin-right: 10px;
+  color: #9ca3af;
+}
+
+.filters select,
+.filters input {
+  padding: 8px;
+  border: 1px solid #3a3a3a;
+  background-color: #2a2a2a;
+  color: #ffffff;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.filters select:focus,
+.filters input:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+.download-csv {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.download-csv:hover {
+  background-color: #2563eb;
 }
 
 .loading,
