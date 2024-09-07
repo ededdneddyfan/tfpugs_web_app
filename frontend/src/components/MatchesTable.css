@@ -241,6 +241,19 @@ body {
   background-color: #4b5563;
 }
 
+.matches-table tr.win {
+  background-color: rgba(0, 255, 0, 0.1);
+}
+
+.matches-table tr.loss {
+  background-color: rgba(255, 0, 0, 0.1);
+}
+
+.matches-table tr.draw {
+  background-color: rgba(128, 128, 128, 0.1);
+}
+
+
 .back-button {
   display: inline-block;
   margin-bottom: 20px;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import './MatchesTable.css'; // We'll reuse the styles from MatchesTable
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import './MatchesTable.css';
 
 interface Match {
   id: number;
@@ -16,36 +16,108 @@ interface Match {
   created_at: string;
 }
 
+interface Player {
+  id: number;
+  discord_id: string;
+  player_name: string;
+  // Add other player fields as needed
+}
+
+type SortKey = 'created_at' | 'map';
+type SortOrder = 'asc' | 'desc';
+
 const PlayerMatches: React.FC = () => {
   const { playerName } = useParams<{ playerName: string }>();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
+  const [player, setPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapFilter, setMapFilter] = useState<string>('');
+  const [serverFilter, setServerFilter] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchPlayerMatches = async () => {
+    const fetchPlayerAndMatches = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch player matches');
+        const [playerResponse, matchesResponse] = await Promise.all([
+          fetch(`/api/players/name/${encodeURIComponent(playerName || '')}`),
+          fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`)
+        ]);
+
+        if (!playerResponse.ok || !matchesResponse.ok) {
+          throw new Error('Failed to fetch player data or matches');
         }
-        const data = await response.json();
-        setMatches(data);
+
+        const playerData = await playerResponse.json();
+        const matchesData = await matchesResponse.json();
+
+        setPlayer(playerData);
+        setMatches(matchesData);
+        setFilteredMatches(matchesData);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching player matches:', error);
-        setError('Failed to load player matches. Please try again later.');
+        console.error('Error fetching player data or matches:', error);
+        setError('Failed to load player data or matches. Please try again later.');
         setLoading(false);
       }
     };
 
-    fetchPlayerMatches();
+    fetchPlayerAndMatches();
   }, [playerName]);
+
+  useEffect(() => {
+    let filtered = matches.filter(match => {
+      const matchDate = new Date(match.created_at);
+      return (
+        (!mapFilter || match.map === mapFilter) &&
+        (!serverFilter || match.server === serverFilter) &&
+        (!startDate || matchDate >= new Date(startDate)) &&
+        (!endDate || matchDate <= new Date(endDate))
+      );
+    });
+
+    filtered.sort((a, b) => {
+      if (sortKey === 'created_at') {
+        return sortOrder === 'asc' 
+          ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      } else if (sortKey === 'map') {
+        return sortOrder === 'asc'
+          ? (a.map || '').localeCompare(b.map || '')
+          : (b.map || '').localeCompare(a.map || '');
+      }
+      return 0;
+    });
+
+    setFilteredMatches(filtered);
+  }, [matches, mapFilter, serverFilter, startDate, endDate, sortKey, sortOrder]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
+  };
+
+  const getPlayerTeam = (match: Match, playerDiscordId: string | undefined): 'blue' | 'red' => {
+    if (!playerDiscordId) return 'red'; // Default to red if playerDiscordId is undefined
+    const blueTeam = match.blue_team?.split(',').map(id => id.trim()) || [];
+    const redTeam = match.red_team?.split(',').map(id => id.trim()) || [];
+    return blueTeam.includes(playerDiscordId) ? 'blue' : 'red';
   };
 
   const getOutcomeClass = (outcome: number | null, team: 'blue' | 'red') => {
@@ -61,20 +133,95 @@ const PlayerMatches: React.FC = () => {
     return { blueScore, redScore };
   };
 
+  const uniqueMaps = Array.from(new Set(matches.map(match => match.map).filter(Boolean)));
+  const uniqueServers = Array.from(new Set(matches.map(match => match.server).filter(Boolean)));
+
+  const downloadCSV = () => {
+    const headers = ['Match ID', 'Date Played', 'Map', 'Server', 'Team', 'Blue Score', 'Red Score', 'Outcome'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredMatches.map(match => {
+        const { blueScore, redScore } = getScores(match);
+        const playerTeam = getPlayerTeam(match, player?.discord_id);
+        const outcome = playerTeam === 'blue' ? (match.match_outcome === 1 ? 'Win' : 'Loss') : (match.match_outcome === 2 ? 'Win' : 'Loss');
+        return [
+          match.match_id,
+          formatDate(match.created_at),
+          match.map,
+          match.server,
+          playerTeam === 'blue' ? 'Blue' : 'Red',
+          blueScore,
+          redScore,
+          outcome
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${playerName}_matches.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   if (loading) return <p className="loading">Loading player matches...</p>;
   if (error) return <p className="error">{error}</p>;
 
   return (
-    <div className="player-matches-container">
+    <div className="matches-container">
       <h3 className="matches-title">Match History for {playerName}</h3>
       <Link to="/" className="back-button">Back to All Matches</Link>
+      <div className="filters">
+        <div className="filter-group">
+          <select value={mapFilter} onChange={(e) => setMapFilter(e.target.value)}>
+            <option value="">All Maps</option>
+            {uniqueMaps.map(map => (
+              <option key={map} value={map}>{map}</option>
+            ))}
+          </select>
+          <select value={serverFilter} onChange={(e) => setServerFilter(e.target.value)}>
+            <option value="">All Servers</option>
+            {uniqueServers.map(server => (
+              <option key={server} value={server}>{server}</option>
+            ))}
+          </select>
+        </div>
+        <div className="filter-group">
+          <label>
+            Date Range:
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="Start Date"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="End Date"
+            />
+          </label>
+        </div>
+        <button onClick={downloadCSV} className="download-csv">Download CSV</button>
+      </div>
       <div className="matches-table-wrapper">
         <table className="matches-table">
           <thead>
             <tr>
               <th>Match ID</th>
-              <th>Date Played</th>
-              <th>Map</th>
+              <th onClick={() => handleSort('created_at')} className="sortable">
+                Date Played {sortKey === 'created_at' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
+              <th onClick={() => handleSort('map')} className="sortable">
+                Map {sortKey === 'map' && (sortOrder === 'asc' ? '▲' : '▼')}
+              </th>
               <th>Server</th>
               <th>Team</th>
               <th>Score</th>
@@ -82,9 +229,9 @@ const PlayerMatches: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {matches.map(match => {
+            {filteredMatches.map(match => {
               const { blueScore, redScore } = getScores(match);
-              const playerTeam = match.blue_team?.includes(playerName || '') ? 'blue' : 'red';
+              const playerTeam = getPlayerTeam(match, player?.discord_id);
               return (
                 <tr key={match.id} className={getOutcomeClass(match.match_outcome, playerTeam)}>
                   <td>
