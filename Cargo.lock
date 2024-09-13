@@ -4959,7 +4959,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tfpugs_web_app"
+name = "tfpugs-web-app"
 version = "0.1.0"
 dependencies = [
  "async-trait",
