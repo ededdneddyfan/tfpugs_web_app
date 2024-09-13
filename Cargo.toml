@@ -42,7 +42,7 @@ unic-langid = "0.9.4"
 # /view engine
 
 [[bin]]
-name = "tfpugs_web_app-cli"
+name = "tfpugs-web-app-cli"
 path = "src/bin/main.rs"
 required-features = []
 

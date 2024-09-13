@@ -1,3 +1,3 @@
 [alias]
-loco = "run --bin tfpugs_web_app-cli --"
+loco = "run --bin tfpugs-web-app-cli --"
 playground = "run --example playground"
