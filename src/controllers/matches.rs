@@ -9,7 +9,7 @@ use crate::models::_entities::players::{Entity as Players, Column as PlayersColu
 
 #[debug_handler]
 pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(Matches::find().filter(MatchesColumn::GameType.eq("4v4")).all(&ctx.db).await?)
+    format::json(Matches::find().filter(MatchesColumn::GameType.eq("4v4")).filter(MatchesColumn::DeletedAt.is_null()).all(&ctx.db).await?)
 }
 
 #[debug_handler]
@@ -40,7 +40,7 @@ pub async fn get_matches_by_player_name(Path(player_name): Path<String>, State(c
         Condition::any()
             .add(Expr::col(MatchesColumn::BlueTeam).like(format!("%{}%", discord_id)))
             .add(Expr::col(MatchesColumn::RedTeam).like(format!("%{}%", discord_id)))
-    )
+    ).filter(MatchesColumn::DeletedAt.is_null())
         .all(&ctx.db)
         .await?;
 
