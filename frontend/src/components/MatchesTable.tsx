@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Fuse from 'fuse.js';
 import './MatchesTable.css';
 
 interface Player {
@@ -38,6 +39,8 @@ const MatchesTable: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [playerSearch, setPlayerSearch] = useState<string>('');
+  const [fuse, setFuse] = useState<Fuse<Player> | null>(null);
 
   const navigate = useNavigate();
 
@@ -82,13 +85,27 @@ const MatchesTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (Object.keys(players).length > 0) {
+      const fuseOptions = {
+        keys: ['player_name'],
+        threshold: 0.3,
+      };
+      setFuse(new Fuse(Object.values(players), fuseOptions));
+    }
+  }, [players]);
+
+  useEffect(() => {
     let filtered = matches.filter(match => {
       const matchDate = new Date(match.created_at);
+      const matchPlayers = [...getTeamPlayers(match.blue_team), ...getTeamPlayers(match.red_team)];
       return (
         (!mapFilter || match.map === mapFilter) &&
         (!serverFilter || match.server === serverFilter) &&
         (!startDate || matchDate >= new Date(startDate)) &&
-        (!endDate || matchDate <= new Date(endDate))
+        (!endDate || matchDate <= new Date(endDate)) &&
+        (!playerSearch || matchPlayers.some(player => 
+          fuse?.search(playerSearch).some(result => result.item.player_name === player)
+        ))
       );
     });
 
@@ -106,7 +123,7 @@ const MatchesTable: React.FC = () => {
     });
 
     setFilteredMatches(filtered);
-  }, [matches, mapFilter, serverFilter, startDate, endDate, sortKey, sortOrder]);
+  }, [matches, mapFilter, serverFilter, startDate, endDate, sortKey, sortOrder, playerSearch, fuse]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -202,6 +219,13 @@ const MatchesTable: React.FC = () => {
               <option key={server} value={server}>{server}</option>
             ))}
           </select>
+          <input
+            type="text"
+            value={playerSearch}
+            onChange={(e) => setPlayerSearch(e.target.value)}
+            placeholder="Search players..."
+            className="player-search"
+          />
         </div>
         <div className="filter-group">
           <label>

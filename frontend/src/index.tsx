@@ -9,7 +9,11 @@ import "./index.css";
 const App: React.FC = () => {
   return (
     <Router>
-      <h2>discord.gg/tfpugs</h2>
+      <h2 style={{ textAlign: 'center' }}>
+        <a href="https://discord.gg/tfpugs" target="_blank" rel="noopener noreferrer">
+          discord.gg/tfpugs
+        </a>
+      </h2>
       <Routes>
         <Route path="/" element={<MatchesTable />} />
         <Route path="/player/:playerName" element={<PlayerMatches />} />

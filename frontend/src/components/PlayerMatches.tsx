@@ -20,6 +20,7 @@ interface Player {
   id: number;
   discord_id: string;
   player_name: string;
+  current_elo: number;
   // Add other player fields as needed
 }
 
@@ -176,6 +177,7 @@ const PlayerMatches: React.FC = () => {
   return (
     <div className="matches-container">
       <h3 className="matches-title">Match History for {playerName}</h3>
+      <h2 className="current-elo">Current ELO: {player ? player.current_elo : 'N/A'}</h2>
       <Link to="/" className="back-button">Back to All Matches</Link>
       <div className="filters">
         <div className="filter-group">
