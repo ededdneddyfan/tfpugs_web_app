@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Fuse from 'fuse.js';
 import './MatchesTable.css';
@@ -26,7 +26,6 @@ interface Match {
 
 type SortKey = 'created_at' | 'map';
 type SortOrder = 'asc' | 'desc';
-
 const MatchesTable: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
@@ -41,6 +40,8 @@ const MatchesTable: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [playerSearch, setPlayerSearch] = useState<string>('');
   const [fuse, setFuse] = useState<Fuse<Player> | null>(null);
+  const [searchResults, setSearchResults] = useState<Player[]>([]);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const navigate = useNavigate();
 
@@ -199,6 +200,37 @@ const MatchesTable: React.FC = () => {
     }
   };
 
+  const handlePlayerSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const searchTerm = e.target.value;
+    setPlayerSearch(searchTerm);
+
+    if (searchTerm && fuse) {
+      const results = fuse.search(searchTerm).slice(0, 5); // Limit to top 5 results
+      setSearchResults(results.map(result => result.item));
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const handlePlayerSelect = (playerName: string) => {
+    setPlayerSearch('');
+    setSearchResults([]);
+    navigate(`/player/${encodeURIComponent(playerName)}`);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchResults([]);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   if (loading) return <p className="loading">Loading matches...</p>;
   if (error) return <p className="error">{error}</p>;
 
@@ -219,13 +251,27 @@ const MatchesTable: React.FC = () => {
               <option key={server} value={server}>{server}</option>
             ))}
           </select>
-          <input
-            type="text"
-            value={playerSearch}
-            onChange={(e) => setPlayerSearch(e.target.value)}
-            placeholder="Search players..."
-            className="player-search"
-          />
+          <div className="player-search-container" ref={searchRef}>
+            <input
+              type="text"
+              value={playerSearch}
+              onChange={handlePlayerSearch}
+              placeholder="Search players..."
+              className="player-search"
+            />
+            {searchResults.length > 0 && (
+              <ul className="search-results">
+                {searchResults.map((player) => (
+                  <li
+                    key={player.id}
+                    onClick={() => handlePlayerSelect(player.player_name)}
+                  >
+                    <span className="player-name">{player.player_name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
         <div className="filter-group">
           <label>
