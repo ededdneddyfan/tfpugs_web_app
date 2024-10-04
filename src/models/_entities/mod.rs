@@ -4,5 +4,6 @@ pub mod prelude;
 
 pub mod matches;
 pub mod notes;
+pub mod player_elos;
 pub mod players;
 pub mod users;
