@@ -50,6 +50,7 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
+            .add_route(controllers::player_elos::routes())
             .add_route(controllers::players::routes())
             .add_route(controllers::matches::routes())
             .add_route(controllers::notes::routes())
