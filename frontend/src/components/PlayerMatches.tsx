@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import './MatchesTable.css';
 
 interface Match {
@@ -24,6 +26,21 @@ interface Player {
   // Add other player fields as needed
 }
 
+interface EloHistory {
+  player_elos: number;
+  created_at: string;
+}
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
 type SortKey = 'created_at' | 'map';
 type SortOrder = 'asc' | 'desc';
 
@@ -40,6 +57,7 @@ const PlayerMatches: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [eloHistory, setEloHistory] = useState<EloHistory[]>([]);
 
   const navigate = useNavigate();
 
@@ -47,25 +65,28 @@ const PlayerMatches: React.FC = () => {
     const fetchPlayerAndMatches = async () => {
       setLoading(true);
       try {
-        const [playerResponse, matchesResponse] = await Promise.all([
+        const [playerResponse, matchesResponse, eloHistoryResponse] = await Promise.all([
           fetch(`/api/players/name/${encodeURIComponent(playerName || '')}`),
-          fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`)
+          fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`),
+          fetch(`/api/player_elos/${encodeURIComponent(playerName || '')}`)
         ]);
 
-        if (!playerResponse.ok || !matchesResponse.ok) {
-          throw new Error('Failed to fetch player data or matches');
+        if (!playerResponse.ok || !matchesResponse.ok || !eloHistoryResponse.ok) {
+          throw new Error('Failed to fetch player data, matches, or ELO history');
         }
 
         const playerData = await playerResponse.json();
         const matchesData = await matchesResponse.json();
+        const eloHistoryData = await eloHistoryResponse.json();
 
         setPlayer(playerData);
         setMatches(matchesData);
         setFilteredMatches(matchesData);
+        setEloHistory(eloHistoryData);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching player data or matches:', error);
-        setError('Failed to load player data or matches. Please try again later.');
+        console.error('Error fetching data:', error);
+        setError('Failed to load data. Please try again later.');
         setLoading(false);
       }
     };
@@ -171,7 +192,42 @@ const PlayerMatches: React.FC = () => {
     }
   };
 
-  if (loading) return <p className="loading">Loading player matches...</p>;
+  const renderEloChart = () => {
+    const data = {
+      labels: eloHistory.map(entry => new Date(entry.created_at).toLocaleDateString()),
+      datasets: [
+        {
+          label: 'ELO',
+          data: eloHistory.map(entry => entry.player_elos),
+          fill: false,
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.1
+        }
+      ]
+    };
+
+    const options = {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top' as const,
+        },
+        title: {
+          display: true,
+          text: 'ELO History'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false
+        }
+      }
+    };
+
+    return <Line data={data} options={options} />;
+  };
+
+  if (loading) return <p className="loading">Loading player data...</p>;
   if (error) return <p className="error">{error}</p>;
 
   return (
@@ -179,6 +235,12 @@ const PlayerMatches: React.FC = () => {
       <h3 className="matches-title">Match History for {playerName}</h3>
       <h2 className="current-elo">Current ELO: {player ? player.current_elo : 'N/A'}</h2>
       <Link to="/" className="back-button">Back to All Matches</Link>
+      
+      {/* ELO History Chart */}
+      <div className="elo-chart-container">
+        {renderEloChart()}
+      </div>
+
       <div className="filters">
         <div className="filter-group">
           <select value={mapFilter} onChange={(e) => setMapFilter(e.target.value)}>
