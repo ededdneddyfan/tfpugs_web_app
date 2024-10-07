@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, TimeScale } from 'chart.js';
-import 'chartjs-adapter-date-fns';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { format } from 'date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import './MatchesTable.css';
 
@@ -29,8 +29,10 @@ interface Player {
 }
 
 interface EloHistory {
+  entry_id: number;
   player_elos: number;
   created_at: string;
+  match_id: number | null;  // Added this line
 }
 
 ChartJS.register(
@@ -41,7 +43,6 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  TimeScale,
   zoomPlugin
 );
 
@@ -64,6 +65,7 @@ const PlayerMatches: React.FC = () => {
   const [eloHistory, setEloHistory] = useState<EloHistory[]>([]);
 
   const navigate = useNavigate();
+  const chartRef = useRef<ChartJS>(null);
 
   useEffect(() => {
     const fetchPlayerAndMatches = async () => {
@@ -146,11 +148,18 @@ const PlayerMatches: React.FC = () => {
     return blueTeam.includes(playerDiscordId) ? 'blue' : 'red';
   };
 
-  const getOutcomeClass = (outcome: number | null, team: 'blue' | 'red') => {
-    if (outcome === 1 && team === 'blue') return 'win';
-    if (outcome === 2 && team === 'red') return 'win';
-    if (outcome === null) return 'draw';
+  const getOutcomeClass = (match_outcome: number | null, playerTeam: 'blue' | 'red') => {
+    if (match_outcome === 0) return 'draw';
+    if (match_outcome === 1 && playerTeam === 'blue') return 'win';
+    if (match_outcome === 2 && playerTeam === 'red') return 'win';
     return 'loss';
+  };
+
+  const getOutcomeText = (match_outcome: number | null, playerTeam: 'blue' | 'red') => {
+    if (match_outcome === 0) return 'Draw';
+    if (match_outcome === 1 && playerTeam === 'blue') return 'Win';
+    if (match_outcome === 2 && playerTeam === 'red') return 'Win';
+    return 'Loss';
   };
 
   const getScores = (match: Match) => {
@@ -197,24 +206,31 @@ const PlayerMatches: React.FC = () => {
   };
 
   const renderEloChart = () => {
+    if (eloHistory.length === 0) {
+      return <p>No ELO history available.</p>;
+    }
+
+    const sortedEloHistory = [...eloHistory].sort((a, b) => a.entry_id - b.entry_id);
+
     const data = {
-      labels: eloHistory.map(entry => new Date(entry.created_at).toLocaleDateString()),
+      labels: sortedEloHistory.map((_, index) => index + 1),
       datasets: [
         {
           label: 'ELO',
-          data: eloHistory.map(entry => ({
-            x: new Date(entry.created_at),
-            y: entry.player_elos
-          })),
+          data: sortedEloHistory.map(entry => entry.player_elos),
           fill: false,
           borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1
+          backgroundColor: 'rgb(75, 192, 192)',
+          pointRadius: 0,
+          pointHoverRadius: 8,
+          tension: 0.4
         }
       ]
     };
 
     const options = {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: 'top' as const,
@@ -222,6 +238,20 @@ const PlayerMatches: React.FC = () => {
         title: {
           display: true,
           text: 'ELO History'
+        },
+        tooltip: {
+          callbacks: {
+            title: (context: any) => `Entry ${context[0].label}`,
+            label: (context: any) => `ELO: ${context.raw}`,
+            afterLabel: (context: any) => {
+              const entry = sortedEloHistory[context.dataIndex];
+              const matchIdInfo = entry.match_id ? `Match ID: ${entry.match_id}` : 'No associated match';
+              return [
+                `Timestamp: ${format(new Date(entry.created_at), "yyyy-MM-dd HH:mm:ss")}`,
+                matchIdInfo
+              ];
+            }
+          }
         },
         zoom: {
           zoom: {
@@ -231,27 +261,28 @@ const PlayerMatches: React.FC = () => {
             pinch: {
               enabled: true
             },
-            mode: 'xy' as const,
+            mode: 'x',
           },
           pan: {
             enabled: true,
-            mode: 'xy' as const,
+            mode: 'x',
           },
         }
       },
       scales: {
         x: {
-          type: 'time' as const,
-          time: {
-            unit: 'day' as const,
-            displayFormats: {
-              day: 'MMM d, yyyy'
-            }
-          },
+          type: 'linear',
           title: {
             display: true,
-            text: 'Date'
-          }
+            text: 'Entry Number'
+          },
+          ticks: {
+            stepSize: 1,
+            autoSkip: true,
+            maxTicksLimit: 20
+          },
+          min: 1,
+          max: sortedEloHistory.length
         },
         y: {
           beginAtZero: false,
@@ -260,17 +291,39 @@ const PlayerMatches: React.FC = () => {
             text: 'ELO'
           }
         }
-      }
+      },
+      elements: {
+        point: {
+          radius: (context: any) => {
+            const chart = context.chart;
+            const area = chart.chartArea;
+            const index = context.dataIndex;
+            const value = context.dataset.data[index];
+            if (!area) {
+              return 0;
+            }
+            const visiblePoints = chart.getDatasetMeta(0).data.filter(
+              (point: any) => point.x >= area.left && point.x <= area.right
+            );
+            return visiblePoints.length < 200 ? 3 : 0;
+          },
+          hoverRadius: 8
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index',
+      },
     };
 
     return (
-      <div>
-        <Line data={data} options={options} />
-        <button onClick={() => resetZoom()} className="reset-zoom-button">Reset Zoom</button>
+      <div style={{ height: '400px', width: '100%' }}>
+        <Line data={data} options={options} ref={chartRef} />
+        <button onClick={resetZoom} className="reset-zoom-button">Reset Zoom</button>
       </div>
     );
   };
-  const chartRef = React.useRef<ChartJS>(null);
+
   const resetZoom = () => {
     if (chartRef.current) {
       chartRef.current.resetZoom();
@@ -368,7 +421,7 @@ const PlayerMatches: React.FC = () => {
                       <span className="red-score">{redScore}</span>
                     </div>
                   </td>
-                  <td>{playerTeam === 'blue' ? (match.match_outcome === 1 ? 'Win' : 'Loss') : (match.match_outcome === 2 ? 'Win' : 'Loss')}</td>
+                  <td>{getOutcomeText(match.match_outcome, playerTeam)}</td>
                 </tr>
               );
             })}
