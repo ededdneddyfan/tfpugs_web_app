@@ -149,21 +149,26 @@ const MatchesTable: React.FC = () => {
   const getOutcomeClass = (outcome: number | null) => {
     if (outcome === 1) return 'blue-win';
     if (outcome === 2) return 'red-win';
+    if (outcome === null) return 'unreported';
     return 'draw';
   };
 
   const getOutcomeText = (outcome: number | null) => {
     if (outcome === 1) return 'Blue Win';
     if (outcome === 2) return 'Red Win';
+    if (outcome === null) return 'Unreported';
     return 'Draw';
   };
 
   const getScores = (match: Match) => {
+    if (match.match_outcome === null) {
+      return { blueScore: '-', redScore: '-' };
+    }
     const blueScore = match.match_outcome === 1 ? match.winning_score : match.losing_score;
     const redScore = match.match_outcome === 2 ? match.winning_score : match.losing_score;
     return { blueScore, redScore };
   };
-
+  
   const uniqueMaps = Array.from(new Set(matches.map(match => match.map).filter(Boolean)));
   const uniqueServers = Array.from(new Set(matches.map(match => match.server).filter(Boolean)));
 

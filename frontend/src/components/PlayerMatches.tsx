@@ -74,7 +74,7 @@ const PlayerMatches: React.FC = () => {
         const [playerResponse, matchesResponse, eloHistoryResponse] = await Promise.all([
           fetch(`/api/players/name/${encodeURIComponent(playerName || '')}`),
           fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`),
-          fetch(`/api/player_elos/${encodeURIComponent(playerName || '')}`)
+          fetch(`/api/player_elo/${encodeURIComponent(playerName || '')}`)
         ]);
 
         if (!playerResponse.ok || !matchesResponse.ok || !eloHistoryResponse.ok) {
@@ -150,6 +150,7 @@ const PlayerMatches: React.FC = () => {
 
   const getOutcomeClass = (match_outcome: number | null, playerTeam: 'blue' | 'red') => {
     if (match_outcome === 0) return 'draw';
+    if (match_outcome === null) return 'unreported';
     if (match_outcome === 1 && playerTeam === 'blue') return 'win';
     if (match_outcome === 2 && playerTeam === 'red') return 'win';
     return 'loss';
@@ -157,12 +158,16 @@ const PlayerMatches: React.FC = () => {
 
   const getOutcomeText = (match_outcome: number | null, playerTeam: 'blue' | 'red') => {
     if (match_outcome === 0) return 'Draw';
+    if (match_outcome === null) return 'unreported';
     if (match_outcome === 1 && playerTeam === 'blue') return 'Win';
     if (match_outcome === 2 && playerTeam === 'red') return 'Win';
     return 'Loss';
   };
 
   const getScores = (match: Match) => {
+    if (match.match_outcome === null) {
+      return { blueScore: '-', redScore: '-' };
+    }
     const blueScore = match.match_outcome === 1 ? match.winning_score : match.losing_score;
     const redScore = match.match_outcome === 2 ? match.winning_score : match.losing_score;
     return { blueScore, redScore };

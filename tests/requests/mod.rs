@@ -1,3 +1,3 @@
 pub mod matches;
 pub mod players;
-pub mod player_elos;
+pub mod player_elo;
