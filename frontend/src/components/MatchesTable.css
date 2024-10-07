@@ -72,10 +72,6 @@ body {
   background-color: #4b5563;
 }
 
-.matches-table tr.draw:hover {
-  background-color: #e0e0e0;
-}
-
 .teams {
   display: flex;
   flex-direction: column;
