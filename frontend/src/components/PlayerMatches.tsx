@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, TimeScale } from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import './MatchesTable.css';
 
 interface Match {
@@ -38,7 +40,9 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TimeScale,
+  zoomPlugin
 );
 
 type SortKey = 'created_at' | 'map';
@@ -198,7 +202,10 @@ const PlayerMatches: React.FC = () => {
       datasets: [
         {
           label: 'ELO',
-          data: eloHistory.map(entry => entry.player_elos),
+          data: eloHistory.map(entry => ({
+            x: new Date(entry.created_at),
+            y: entry.player_elos
+          })),
           fill: false,
           borderColor: 'rgb(75, 192, 192)',
           tension: 0.1
@@ -215,16 +222,59 @@ const PlayerMatches: React.FC = () => {
         title: {
           display: true,
           text: 'ELO History'
+        },
+        zoom: {
+          zoom: {
+            wheel: {
+              enabled: true,
+            },
+            pinch: {
+              enabled: true
+            },
+            mode: 'xy' as const,
+          },
+          pan: {
+            enabled: true,
+            mode: 'xy' as const,
+          },
         }
       },
       scales: {
+        x: {
+          type: 'time' as const,
+          time: {
+            unit: 'day' as const,
+            displayFormats: {
+              day: 'MMM d, yyyy'
+            }
+          },
+          title: {
+            display: true,
+            text: 'Date'
+          }
+        },
         y: {
-          beginAtZero: false
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: 'ELO'
+          }
         }
       }
     };
 
-    return <Line data={data} options={options} />;
+    return (
+      <div>
+        <Line data={data} options={options} />
+        <button onClick={() => resetZoom()} className="reset-zoom-button">Reset Zoom</button>
+      </div>
+    );
+  };
+  const chartRef = React.useRef<ChartJS>(null);
+  const resetZoom = () => {
+    if (chartRef.current) {
+      chartRef.current.resetZoom();
+    }
   };
 
   if (loading) return <p className="loading">Loading player data...</p>;
