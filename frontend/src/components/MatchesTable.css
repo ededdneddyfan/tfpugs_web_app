@@ -384,7 +384,7 @@ body {
 .chart-controls {
   position: absolute;
   bottom: 10px;  /* Adjust this value to position the button vertically */
-  left: 0%;
+  left: 5%;
   transform: translateX(-50%);
   z-index: 10;
 }
