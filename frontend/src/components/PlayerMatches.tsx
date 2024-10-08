@@ -4,6 +4,7 @@ import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { format } from 'date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import './MatchesTable.css';
 
 interface Match {
@@ -43,7 +44,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  zoomPlugin
+  zoomPlugin,
+  annotationPlugin
 );
 
 type SortKey = 'created_at' | 'map';
@@ -216,6 +218,9 @@ const PlayerMatches: React.FC = () => {
     }
 
     const sortedEloHistory = [...eloHistory].sort((a, b) => a.entry_id - b.entry_id);
+    
+    // Calculate average ELO
+    const averageElo = sortedEloHistory.reduce((sum, entry) => sum + entry.player_elos, 0) / sortedEloHistory.length;
 
     const data = {
       labels: sortedEloHistory.map((_, index) => index + 1),
@@ -276,12 +281,12 @@ const PlayerMatches: React.FC = () => {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false, // Hide the legend as we don't need it for the glow effect layers
+          display: false,
         },
         title: {
           display: true,
           text: 'ELO History',
-          color: 'rgba(255, 255, 255, 0.8)' // Light text color for dark background
+          color: 'rgba(255, 255, 255, 0.8)'
         },
         tooltip: {
           filter: (tooltipItem: any) => tooltipItem.datasetIndex === data.datasets.length - 1,
@@ -312,6 +317,26 @@ const PlayerMatches: React.FC = () => {
             enabled: true,
             mode: 'x',
           },
+        },
+        annotation: {
+          annotations: {
+            averageLine: {
+              type: 'line',
+              yMin: averageElo,
+              yMax: averageElo,
+              borderColor: 'rgba(255, 255, 255, 0.5)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              label: {
+                display: true,
+                content: `Average: ${averageElo.toFixed(2)}`,
+                position: 'end',
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                color: 'rgba(255, 255, 255, 0.8)',
+                padding: 4
+              }
+            }
+          }
         }
       },
       scales: {
@@ -320,13 +345,13 @@ const PlayerMatches: React.FC = () => {
           title: {
             display: true,
             text: 'Entry Number',
-            color: 'rgba(255, 255, 255, 0.8)' // Light text color for dark background
+            color: 'rgba(255, 255, 255, 0.8)'
           },
           ticks: {
             stepSize: 1,
             autoSkip: true,
             maxTicksLimit: 20,
-            color: 'rgba(255, 255, 255, 0.6)', // Light text color for dark background
+            color: 'rgba(255, 255, 255, 0.6)',
             callback: function (value: any) {
               // Skipping decimal points
               return Math.floor(value);
@@ -343,10 +368,10 @@ const PlayerMatches: React.FC = () => {
           title: {
             display: true,
             text: 'ELO',
-            color: 'rgba(255, 255, 255, 0.8)' // Light text color for dark background
+            color: 'rgba(255, 255, 255, 0.8)'
           },
           ticks: {
-            color: 'rgba(255, 255, 255, 0.6)' // Light text color for dark background
+            color: 'rgba(255, 255, 255, 0.6)'
           },
           grid: {
             display: false
@@ -391,7 +416,7 @@ const PlayerMatches: React.FC = () => {
         padding: '20px', 
         borderRadius: '10px',
         boxShadow: 'none',
-        position: 'relative'  // Add this to allow absolute positioning of children
+        position: 'relative'
       }}>
         <Line data={data} options={options} ref={chartRef} />
         <div className="chart-controls">
