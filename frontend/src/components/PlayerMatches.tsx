@@ -8,15 +8,15 @@ import './MatchesTable.css';
 
 interface Match {
   id: number;
-  match_id: number | null;
-  blue_team: string | null;
-  red_team: string | null;
+  match_id: number | undefined;
+  blue_team: string | undefined;
+  red_team: string | undefined;
   winning_score: number | null;
   losing_score: number | null;
-  map: string | null;
-  server: string | null;
+  map: string | undefined;
+  server: string | undefined;
   match_outcome: number | null;
-  stats_url: string | null;
+  stats_url: string | undefined;
   created_at: string;
 }
 
@@ -220,15 +220,53 @@ const PlayerMatches: React.FC = () => {
     const data = {
       labels: sortedEloHistory.map((_, index) => index + 1),
       datasets: [
+        // Glow effect layers
+        {
+          label: 'ELO Glow 3',
+          data: sortedEloHistory.map(entry => entry.player_elos),
+          borderColor: 'rgba(0, 255, 255, 0.1)',
+          backgroundColor: 'rgba(0, 255, 255, 0)',
+          borderWidth: 15,
+          pointRadius: 0,
+          tension: 0.4,
+          tooltip: {
+            enabled: false
+          }
+        },
+        {
+          label: 'ELO Glow 2',
+          data: sortedEloHistory.map(entry => entry.player_elos),
+          borderColor: 'rgba(0, 255, 255, 0.2)',
+          backgroundColor: 'rgba(0, 255, 255, 0)',
+          borderWidth: 10,
+          pointRadius: 0,
+          tension: 0.4,
+          tooltip: {
+            enabled: false
+          }
+        },
+        {
+          label: 'ELO Glow 1',
+          data: sortedEloHistory.map(entry => entry.player_elos),
+          borderColor: 'rgba(0, 255, 255, 0.3)',
+          backgroundColor: 'rgba(0, 255, 255, 0)',
+          borderWidth: 5,
+          pointRadius: 0,
+          tension: 0.4,
+          tooltip: {
+            enabled: false
+          }
+        },
+        // Main line
         {
           label: 'ELO',
           data: sortedEloHistory.map(entry => entry.player_elos),
-          fill: false,
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgb(75, 192, 192)',
+          borderColor: 'rgba(0, 255, 255, 1)',
+          backgroundColor: 'rgba(0, 255, 255, 0.3)',
+          borderWidth: 2,
           pointRadius: 0,
           pointHoverRadius: 8,
-          tension: 0.4
+          tension: 0.4,
         }
       ]
     };
@@ -238,13 +276,15 @@ const PlayerMatches: React.FC = () => {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'top' as const,
+          display: false, // Hide the legend as we don't need it for the glow effect layers
         },
         title: {
           display: true,
-          text: 'ELO History'
+          text: 'ELO History',
+          color: 'rgba(255, 255, 255, 0.8)' // Light text color for dark background
         },
         tooltip: {
+          filter: (tooltipItem: any) => tooltipItem.datasetIndex === data.datasets.length - 1,
           callbacks: {
             title: (context: any) => `Entry ${context[0].label}`,
             label: (context: any) => `ELO: ${context.raw}`,
@@ -279,21 +319,37 @@ const PlayerMatches: React.FC = () => {
           type: 'linear',
           title: {
             display: true,
-            text: 'Entry Number'
+            text: 'Entry Number',
+            color: 'rgba(255, 255, 255, 0.8)' // Light text color for dark background
           },
           ticks: {
             stepSize: 1,
             autoSkip: true,
-            maxTicksLimit: 20
+            maxTicksLimit: 20,
+            color: 'rgba(255, 255, 255, 0.6)', // Light text color for dark background
+            callback: function (value: any) {
+              // Skipping decimal points
+              return Math.floor(value);
+          }
           },
           min: 1,
-          max: sortedEloHistory.length
+          max: sortedEloHistory.length,
+          grid: {
+            display: false
+          }
         },
         y: {
           beginAtZero: false,
           title: {
             display: true,
-            text: 'ELO'
+            text: 'ELO',
+            color: 'rgba(255, 255, 255, 0.8)' // Light text color for dark background
+          },
+          ticks: {
+            color: 'rgba(255, 255, 255, 0.6)' // Light text color for dark background
+          },
+          grid: {
+            display: false
           }
         }
       },
@@ -312,19 +368,35 @@ const PlayerMatches: React.FC = () => {
             );
             return visiblePoints.length < 200 ? 3 : 0;
           },
-          hoverRadius: 8
+          hoverRadius: 8,
+          backgroundColor: 'rgba(0, 255, 255, 1)',
+          borderColor: 'rgba(0, 255, 255, 1)',
         }
       },
       interaction: {
         intersect: false,
         mode: 'index',
       },
+      layout: {
+        padding: 20
+      },
+      backgroundColor: 'black',
     };
 
     return (
-      <div style={{ height: '400px', width: '100%' }}>
+      <div style={{ 
+        height: '400px', 
+        width: '100%', 
+        backgroundColor: 'black', 
+        padding: '20px', 
+        borderRadius: '10px',
+        boxShadow: 'none',
+        position: 'relative'  // Add this to allow absolute positioning of children
+      }}>
         <Line data={data} options={options} ref={chartRef} />
-        <button onClick={resetZoom} className="reset-zoom-button">Reset Zoom</button>
+        <div className="chart-controls">
+          <button onClick={resetZoom} className="reset-zoom-button">Reset Zoom</button>
+        </div>
       </div>
     );
   };
