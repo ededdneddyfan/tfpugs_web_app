@@ -1,7 +1,12 @@
-name = "tfpugs-web-app"
 # Declare ignored files that should be included in deployment:
+[deploy]
+include = [
+  "config/production.yaml",
+  "frontend/dist/*"
+]
+
+[build]
 assets = [
   "config/production.yaml",
-  "frontend/dist/*",
-  "node_modules/*"
+  "frontend/dist/*"
 ]
