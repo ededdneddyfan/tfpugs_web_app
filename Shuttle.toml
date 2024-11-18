@@ -2,11 +2,13 @@
 [deploy]
 include = [
   "config/production.yaml",
-  "frontend/dist/*"
+  "frontend/dist/*",
+  "assets/*"
 ]
 
 [build]
 assets = [
   "config/production.yaml",
-  "frontend/dist/*"
+  "frontend/dist/*",
+  "assets/*"
 ]
