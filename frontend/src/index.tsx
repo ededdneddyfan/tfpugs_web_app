@@ -51,7 +51,7 @@ const App: React.FC = () => {
         <iframe 
           src="https://discord.com/widget?id=836006501595742238&theme=dark" 
           width="350" 
-          height="200" 
+          height="250" 
           allowTransparency="true" 
           frameBorder="0" 
           sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
