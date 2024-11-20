@@ -1,7 +1,7 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
 use loco_rs::prelude::*;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, Condition};
+use sea_orm::{DbBackend, EntityTrait, QueryFilter, ColumnTrait, Condition, Statement};
 use sea_orm::prelude::Expr;
 use serde::Serialize;
 use crate::models::_entities::matches::{Entity as Matches, Column as MatchesColumn};
@@ -24,8 +24,13 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 #[debug_handler]
 pub async fn get_matches_by_player_name(Path(player_name): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
     // First, find the player's discord_id
+    let statement = Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        r#"SELECT * FROM players WHERE LOWER(player_name) = LOWER($1)"#,
+        [player_name.clone().into()]
+    );
     let player = Players::find()
-        .filter(PlayersColumn::PlayerName.eq(&player_name))
+        .from_raw_sql(statement)
         .one(&ctx.db)
         .await?;
 

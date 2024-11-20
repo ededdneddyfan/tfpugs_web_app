@@ -1,10 +1,10 @@
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
-use sea_orm::{EntityTrait, QueryOrder};
+use sea_orm::{DbBackend, EntityTrait, Statement};
 use axum::debug_handler;
 use axum::extract::Path;
 
-use crate::models::_entities::player_elo::{Entity, Column};
+use crate::models::_entities::player_elo::Entity;
 
 #[debug_handler]
 pub async fn echo(req_body: String) -> String {
@@ -22,9 +22,13 @@ pub async fn get_player_elo_by_player_name(
     Path(player_name): Path<String>,
     State(ctx): State<AppContext>
 ) -> Result<Response> {
+    let statement = Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        r#"SELECT * FROM player_elo WHERE LOWER(player_name) = LOWER($1) ORDER BY created_at ASC"#,
+        [player_name.clone().into()]
+    );
     let player_elo = Entity::find()
-        .filter(Column::PlayerName.eq(player_name))
-        .order_by_asc(Column::CreatedAt)
+        .from_raw_sql(statement)
         .all(&ctx.db)
         .await?;
     format::json(player_elo)

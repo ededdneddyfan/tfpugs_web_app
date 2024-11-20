@@ -1,7 +1,7 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
 use loco_rs::prelude::*;
-use sea_orm::EntityTrait;
+use sea_orm::{DbBackend, EntityTrait, Statement};
 
 use crate::models::_entities::players::{Entity, Column};
 
@@ -30,8 +30,16 @@ pub async fn get_by_discord_id(Path(discord_id): Path<String>, State(ctx): State
 
 #[debug_handler]
 pub async fn get_by_name(Path(name): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
+    let statement = Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        r#"SELECT * FROM players WHERE LOWER(player_name) = LOWER($1)"#,
+        [name.clone().into()]
+    );
+    
+    println!("SQL Query: {}, Parameters: {:?}", statement.sql, statement.values);
+    
     let player = Entity::find()
-        .filter(Column::PlayerName.eq(name))
+        .from_raw_sql(statement)
         .one(&ctx.db)
         .await?;
     match player {
