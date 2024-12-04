@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import MatchesTable from "./components/MatchesTable";
 import PlayerMatches from "./components/PlayerMatches";
+import Leaderboard from "./components/Leaderboard";
 
 import "./index.css";
 
@@ -40,7 +41,6 @@ const Navigation: React.FC = () => {
 };
 
 // Stub components for new routes
-const Leaderboard: React.FC = () => <div>Leaderboard Coming Soon!</div>;
 const About: React.FC = () => <div>About Page Coming Soon!</div>;
 
 const App: React.FC = () => {

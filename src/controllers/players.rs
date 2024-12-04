@@ -1,7 +1,7 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
 use loco_rs::prelude::*;
-use sea_orm::{DbBackend, EntityTrait, Statement};
+use sea_orm::{DbBackend, EntityTrait, QueryOrder, Statement};
 
 use crate::models::_entities::players::{Entity, Column};
 
@@ -48,10 +48,20 @@ pub async fn get_by_name(Path(name): Path<String>, State(ctx): State<AppContext>
     }
 }
 
+#[debug_handler]
+pub async fn list_by_elo(State(ctx): State<AppContext>) -> Result<Response> {
+    format::json(Entity::find()
+        .filter(Column::DeletedAt.is_null())
+        .order_by_desc(Column::CurrentElo)
+        .all(&ctx.db)
+        .await?)
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/players")
         .add("/", get(list))
+        .add("/by-elo", get(list_by_elo))
         .add("/:id", get(get_one))
         .add("/discord/:discord_id", get(get_by_discord_id))
         .add("/name/:name", get(get_by_name))
