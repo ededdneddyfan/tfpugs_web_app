@@ -43,6 +43,7 @@ const Leaderboard: React.FC = () => {
               <th className="px-6 py-3 text-right">W</th>
               <th className="px-6 py-3 text-right">L</th>
               <th className="px-6 py-3 text-right">D</th>
+              <th className="px-6 py-3 text-right">Win %</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
@@ -61,6 +62,9 @@ const Leaderboard: React.FC = () => {
                 <td className="px-6 py-4 text-right text-green-400">{player.pug_wins}</td>
                 <td className="px-6 py-4 text-right text-red-400">{player.pug_losses}</td>
                 <td className="px-6 py-4 text-right text-gray-400">{player.pug_draws}</td>
+                <td className="px-6 py-4 text-right">
+                  {((player.pug_wins / (player.pug_wins + player.pug_losses)) * 100 || 0).toFixed(1)}%
+                </td>
               </tr>
             ))}
           </tbody>
