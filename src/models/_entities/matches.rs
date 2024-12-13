@@ -6,12 +6,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "matches")]
 pub struct Model {
-    pub created_at: DateTimeWithTimeZone,
-    pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key)]
-    pub id: i32,
+    pub id: u32,
+    pub created_at: DateTimeUtc,
+    pub updated_at: DateTimeUtc,
     pub match_id: Option<i32>,
-    pub deleted_at: Option<DateTime>,
+    pub deleted_at: Option<DateTimeUtc>,
     #[sea_orm(column_type = "Float", nullable)]
     pub blue_probability: Option<f32>,
     #[sea_orm(column_type = "Float", nullable)]

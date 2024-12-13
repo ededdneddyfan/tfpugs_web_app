@@ -4,4 +4,3 @@ pub use super::matches::Entity as Matches;
 pub use super::notes::Entity as Notes;
 pub use super::player_elo::Entity as PlayerElo;
 pub use super::players::Entity as Players;
-pub use super::users::Entity as Users;

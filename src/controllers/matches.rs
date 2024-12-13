@@ -13,7 +13,7 @@ pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 #[debug_handler]
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
+pub async fn get_one(Path(id): Path<u32>, State(ctx): State<AppContext>) -> Result<Response> {
     let match_item = Matches::find_by_id(id).one(&ctx.db).await?;
     match match_item {
         Some(m) => format::json(m),
@@ -25,8 +25,8 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 pub async fn get_matches_by_player_name(Path(player_name): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
     // First, find the player's discord_id
     let statement = Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        r#"SELECT * FROM players WHERE LOWER(player_name) = LOWER($1)"#,
+        DbBackend::MySql,
+        r#"SELECT * FROM players WHERE LOWER(player_name) = LOWER(?)"#,
         [player_name.clone().into()]
     );
     let player = Players::find()

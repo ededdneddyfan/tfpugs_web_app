@@ -27,6 +27,7 @@ validator = { version = "0.16" }
 sea-orm = { version = "1.0.0", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
+  "sqlx-mysql",
   "runtime-tokio-rustls",
   "macros",
 ] }
