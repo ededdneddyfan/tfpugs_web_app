@@ -6,10 +6,10 @@ use shuttle_runtime::DeploymentMetadata;
 
 #[shuttle_runtime::main]
 async fn main(
-  #[shuttle_shared_db::Postgres] conn_str: String,
+  #[shuttle_shared_db::Postgres] _conn_str: String,
   #[shuttle_runtime::Metadata] meta: DeploymentMetadata,
 ) -> shuttle_axum::ShuttleAxum {
-    std::env::set_var("DATABASE_URL", conn_str);
+    // std::env::set_var("DATABASE_URL", conn_str);
     let environment = match meta.env {
         shuttle_runtime::Environment::Local => Environment::Development,
         shuttle_runtime::Environment::Deployment => Environment::Production,

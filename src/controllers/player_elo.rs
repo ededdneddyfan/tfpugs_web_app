@@ -22,15 +22,23 @@ pub async fn get_player_elo_by_player_name(
     Path(player_name): Path<String>,
     State(ctx): State<AppContext>
 ) -> Result<Response> {
+    println!("Received player_name: {}", player_name);
+    
     let statement = Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        r#"SELECT * FROM player_elo WHERE LOWER(player_name) = LOWER($1) ORDER BY created_at ASC"#,
+        DbBackend::MySql,
+        r#"SELECT * FROM player_elo WHERE LOWER(player_name) = LOWER(?) ORDER BY created_at ASC"#,
         [player_name.clone().into()]
     );
+    
+    println!("SQL Query: {}, Parameters: {:?}", statement.sql, statement.values);
+    
     let player_elo = Entity::find()
         .from_raw_sql(statement)
         .all(&ctx.db)
         .await?;
+        
+    println!("Query result: {:?}", player_elo);
+    
     format::json(player_elo)
 }
 
