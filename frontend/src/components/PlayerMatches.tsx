@@ -70,22 +70,89 @@ const PlayerMatches: React.FC = () => {
   const chartRef = useRef<ChartJS>(null);
 
   useEffect(() => {
+    // Utility function for retrying failed requests
+    const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3, delay = 500) => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) {
+            return response;
+          }
+          console.log(`Attempt ${attempt} failed for ${url}:`, await response.text().catch(() => 'No error text'));
+          
+          if (attempt === maxRetries) {
+            return response; // Return the failed response on last attempt
+          }
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        } catch (error) {
+          console.error(`Attempt ${attempt} error for ${url}:`, error);
+          if (attempt === maxRetries) {
+            throw error;
+          }
+          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        }
+      }
+      throw new Error('All retry attempts failed');
+    };
+
     const fetchPlayerAndMatches = async () => {
       setLoading(true);
       try {
+        const encodedName = encodeURIComponent(playerName || '');
+        console.log('Making requests with:', {
+          originalName: playerName,
+          encodedName: encodedName
+        });
+
+        const requestOptions = {
+          method: 'GET',
+          mode: 'cors' as RequestMode,
+          credentials: 'include' as RequestCredentials,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        };
+
+        const baseUrl = window.location.origin;
+        console.log('Base URL:', baseUrl);
+        console.log('Full URLs:', {
+          player: `${baseUrl}/api/players/name/${encodedName}`,
+          matches: `${baseUrl}/api/matches/player/${encodedName}`,
+          elo: `${baseUrl}/api/player_elo/${encodedName}`
+        });
+
+        // Make parallel requests with retry logic
         const [playerResponse, matchesResponse, eloHistoryResponse] = await Promise.all([
-          fetch(`/api/players/name/${encodeURIComponent(playerName || '')}`),
-          fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`),
-          fetch(`/api/player_elo/${encodeURIComponent(playerName || '')}`)
+          fetchWithRetry(`${baseUrl}/api/players/name/${encodedName}`, requestOptions),
+          fetchWithRetry(`${baseUrl}/api/matches/player/${encodedName}`, requestOptions),
+          fetchWithRetry(`${baseUrl}/api/player_elo/${encodedName}`, requestOptions)
         ]);
 
+        // Check if any requests still failed after retries
         if (!playerResponse.ok || !matchesResponse.ok || !eloHistoryResponse.ok) {
-          throw new Error('Failed to fetch player data, matches, or ELO history');
+          const errors = [];
+          if (!playerResponse.ok) {
+            errors.push(`Player data: ${await playerResponse.text().catch(() => 'Unknown error')}`);
+          }
+          if (!matchesResponse.ok) {
+            errors.push(`Matches data: ${await matchesResponse.text().catch(() => 'Unknown error')}`);
+          }
+          if (!eloHistoryResponse.ok) {
+            errors.push(`ELO data: ${await eloHistoryResponse.text().catch(() => 'Unknown error')}`);
+          }
+          throw new Error(`Requests failed after retries: ${errors.join(', ')}`);
         }
 
-        const playerData = await playerResponse.json();
-        const matchesData = await matchesResponse.json();
-        const eloHistoryData = await eloHistoryResponse.json();
+        // Get all data in parallel
+        const [playerData, matchesData, eloHistoryData] = await Promise.all([
+          playerResponse.json(),
+          matchesResponse.json(),
+          eloHistoryResponse.json()
+        ]);
 
         setPlayer(playerData);
         setMatches(matchesData);
