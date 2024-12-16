@@ -70,27 +70,76 @@ const PlayerMatches: React.FC = () => {
   const chartRef = useRef<ChartJS>(null);
 
   useEffect(() => {
+    // Utility function for retrying failed requests
+    const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3, delay = 500) => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) {
+            return response;
+          }
+          console.log(`Attempt ${attempt} failed for ${url}:`, await response.text().catch(() => 'No error text'));
+          
+          if (attempt === maxRetries) {
+            return response; // Return the failed response on last attempt
+          }
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        } catch (error) {
+          console.error(`Attempt ${attempt} error for ${url}:`, error);
+          if (attempt === maxRetries) {
+            throw error;
+          }
+          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        }
+      }
+      throw new Error('All retry attempts failed');
+    };
+
     const fetchPlayerAndMatches = async () => {
       setLoading(true);
       try {
-        const [playerResponse, matchesResponse, eloHistoryResponse] = await Promise.all([
-          fetch(`/api/players/name/${encodeURIComponent(playerName || '')}`),
-          fetch(`/api/matches/player/${encodeURIComponent(playerName || '')}`),
-          fetch(`/api/player_elo/${encodeURIComponent(playerName || '')}`)
-        ]);
+        const encodedName = encodeURIComponent(playerName || '');
+        console.log('Making requests with:', {
+          originalName: playerName,
+          encodedName: encodedName
+        });
 
-        if (!playerResponse.ok || !matchesResponse.ok || !eloHistoryResponse.ok) {
-          throw new Error('Failed to fetch player data, matches, or ELO history');
+        const requestOptions = {
+          method: 'GET',
+          mode: 'cors' as RequestMode,
+          credentials: 'include' as RequestCredentials,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        };
+
+        const baseUrl = window.location.origin;
+        console.log('Base URL:', baseUrl);
+        console.log('Full URLs:', {
+          player: `${baseUrl}/api/players/name/${encodedName}`,
+          matches: `${baseUrl}/api/matches/player/${encodedName}`,
+          elo: `${baseUrl}/api/player_elo/${encodedName}`
+        });
+
+        // Make parallel requests with retry logic
+        const response = await fetchWithRetry(
+          `${baseUrl}/api/players/combined/${encodedName}`, 
+          requestOptions
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch combined data: ${await response.text()}`);
         }
 
-        const playerData = await playerResponse.json();
-        const matchesData = await matchesResponse.json();
-        const eloHistoryData = await eloHistoryResponse.json();
-
-        setPlayer(playerData);
-        setMatches(matchesData);
-        setFilteredMatches(matchesData);
-        setEloHistory(eloHistoryData);
+        const combinedData = await response.json();
+        setPlayer(combinedData.player);
+        setMatches(combinedData.matches);
+        setFilteredMatches(combinedData.matches);
+        setEloHistory(combinedData.elo_history);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);

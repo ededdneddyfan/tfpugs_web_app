@@ -7,21 +7,25 @@ interface Player {
   id: number;
   discord_id: string;
   player_name: string;
-  // Add other player fields as needed
+  current_elo: number;
 }
 
 interface Match {
-  id: number;
-  match_id: number | null;
-  blue_team: string | null;
-  red_team: string | null;
-  winning_score: number | null;
-  losing_score: number | null;
-  map: string | null;
-  server: string | null;
-  match_outcome: number | null;
-  stats_url: string | null;
-  created_at: string;
+  match_data: {
+    id: number;
+    match_id: number | null;
+    blue_team: string | null;
+    red_team: string | null;
+    winning_score: number | null;
+    losing_score: number | null;
+    map: string | null;
+    server: string | null;
+    match_outcome: number | null;
+    stats_url: string | null;
+    created_at: string;
+  };
+  blue_team_players: Player[];
+  red_team_players: Player[];
 }
 
 type SortKey = 'created_at' | 'map';
@@ -29,7 +33,6 @@ type SortOrder = 'asc' | 'desc';
 const MatchesTable: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
-  const [players, setPlayers] = useState<Record<string, Player>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapFilter, setMapFilter] = useState<string>('');
@@ -39,13 +42,44 @@ const MatchesTable: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [playerSearch, setPlayerSearch] = useState<string>('');
-  const [fuse, setFuse] = useState<Fuse<Player> | null>(null);
   const [searchResults, setSearchResults] = useState<Player[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (playerSearch) {
+      const allPlayers = new Map<number, Player>();
+      matches.forEach(match => {
+        [...match.blue_team_players, ...match.red_team_players].forEach(player => {
+          allPlayers.set(player.id, player);
+        });
+      });
+      
+      const uniquePlayers = Array.from(allPlayers.values());
+      const results = uniquePlayers
+        .filter(player => 
+          player.player_name.toLowerCase().includes(playerSearch.toLowerCase())
+        )
+        .slice(0, 5); // Limit to top 5 results
+      
+      setSearchResults(results);
+    } else {
+      setSearchResults([]);
+    }
+  }, [playerSearch, matches]);
+
   const handlePlayerClick = (playerName: string) => {
+    navigate(`/player/${encodeURIComponent(playerName)}`);
+  };
+
+  const handlePlayerSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPlayerSearch(e.target.value);
+  };
+
+  const handlePlayerSelect = (playerName: string) => {
+    setPlayerSearch('');
+    setSearchResults([]);
     navigate(`/player/${encodeURIComponent(playerName)}`);
   };
 
@@ -53,27 +87,15 @@ const MatchesTable: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [matchesResponse, playersResponse] = await Promise.all([
-          fetch('/api/matches'),
-          fetch('/api/players')
-        ]);
+        const matchesResponse = await fetch('/api/matches/with-players');
 
-        if (!matchesResponse.ok || !playersResponse.ok) {
+        if (!matchesResponse.ok) {
           throw new Error('Failed to fetch data');
         }
 
         const matchesData = await matchesResponse.json();
-        const playersData = await playersResponse.json();
-
         setMatches(matchesData);
         setFilteredMatches(matchesData);
-        
-        const playersMap: Record<string, Player> = {};
-        playersData.forEach((player: Player) => {
-          playersMap[player.discord_id] = player;
-        });
-        setPlayers(playersMap);
-
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -86,26 +108,16 @@ const MatchesTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (Object.keys(players).length > 0) {
-      const fuseOptions = {
-        keys: ['player_name'],
-        threshold: 0.3,
-      };
-      setFuse(new Fuse(Object.values(players), fuseOptions));
-    }
-  }, [players]);
-
-  useEffect(() => {
     let filtered = matches.filter(match => {
-      const matchDate = new Date(match.created_at);
-      const matchPlayers = [...getTeamPlayers(match.blue_team), ...getTeamPlayers(match.red_team)];
+      const matchDate = new Date(match.match_data.created_at);
+      const matchPlayers = [...match.blue_team_players, ...match.red_team_players];
       return (
-        (!mapFilter || match.map === mapFilter) &&
-        (!serverFilter || match.server === serverFilter) &&
+        (!mapFilter || match.match_data.map === mapFilter) &&
+        (!serverFilter || match.match_data.server === serverFilter) &&
         (!startDate || matchDate >= new Date(startDate)) &&
         (!endDate || matchDate <= new Date(endDate)) &&
         (!playerSearch || matchPlayers.some(player => 
-          fuse?.search(playerSearch).some(result => result.item.player_name === player)
+          player.player_name.toLowerCase().includes(playerSearch.toLowerCase())
         ))
       );
     });
@@ -113,18 +125,18 @@ const MatchesTable: React.FC = () => {
     filtered.sort((a, b) => {
       if (sortKey === 'created_at') {
         return sortOrder === 'asc' 
-          ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          ? new Date(a.match_data.created_at).getTime() - new Date(b.match_data.created_at).getTime()
+          : new Date(b.match_data.created_at).getTime() - new Date(a.match_data.created_at).getTime();
       } else if (sortKey === 'map') {
         return sortOrder === 'asc'
-          ? (a.map || '').localeCompare(b.map || '')
-          : (b.map || '').localeCompare(a.map || '');
+          ? (a.match_data.map || '').localeCompare(b.match_data.map || '')
+          : (b.match_data.map || '').localeCompare(a.match_data.map || '');
       }
       return 0;
     });
 
     setFilteredMatches(filtered);
-  }, [matches, mapFilter, serverFilter, startDate, endDate, sortKey, sortOrder, playerSearch, fuse]);
+  }, [matches, mapFilter, serverFilter, startDate, endDate, sortKey, sortOrder, playerSearch]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -133,12 +145,6 @@ const MatchesTable: React.FC = () => {
       setSortKey(key);
       setSortOrder('asc');
     }
-  };
-
-  const getTeamPlayers = (teamString: string | null) => {
-    if (!teamString) return [];
-    const discordIds = teamString.split(',').map(id => id.trim());
-    return discordIds.map(id => players[id]?.player_name || id);
   };
 
   const formatDate = (dateString: string) => {
@@ -160,34 +166,34 @@ const MatchesTable: React.FC = () => {
     return 'Draw';
   };
 
-  const getScores = (match: Match) => {
-    if (match.match_outcome === null) {
+  const getScores = (matchData: Match['match_data']) => {
+    if (matchData.match_outcome === null) {
       return { blueScore: '-', redScore: '-' };
     }
-    const blueScore = match.match_outcome === 1 ? match.winning_score : match.losing_score;
-    const redScore = match.match_outcome === 2 ? match.winning_score : match.losing_score;
+    const blueScore = matchData.match_outcome === 1 ? matchData.winning_score : matchData.losing_score;
+    const redScore = matchData.match_outcome === 2 ? matchData.winning_score : matchData.losing_score;
     return { blueScore, redScore };
   };
   
-  const uniqueMaps = Array.from(new Set(matches.map(match => match.map).filter(Boolean)));
-  const uniqueServers = Array.from(new Set(matches.map(match => match.server).filter(Boolean)));
+  const uniqueMaps = Array.from(new Set(matches.map(match => match.match_data.map).filter(Boolean)));
+  const uniqueServers = Array.from(new Set(matches.map(match => match.match_data.server).filter(Boolean)));
 
   const downloadCSV = () => {
     const headers = ['Match ID', 'Date Played', 'Map', 'Server', 'Blue Team', 'Red Team', 'Blue Score', 'Red Score', 'Outcome'];
     const csvContent = [
       headers.join(','),
       ...filteredMatches.map(match => {
-        const { blueScore, redScore } = getScores(match);
+        const { blueScore, redScore } = getScores(match.match_data);
         return [
-          match.match_id,
-          formatDate(match.created_at),
-          match.map,
-          match.server,
-          getTeamPlayers(match.blue_team).join('; '),
-          getTeamPlayers(match.red_team).join('; '),
+          match.match_data.match_id,
+          formatDate(match.match_data.created_at),
+          match.match_data.map,
+          match.match_data.server,
+          match.blue_team_players.map(p => p.player_name).join('; '),
+          match.red_team_players.map(p => p.player_name).join('; '),
           blueScore,
           redScore,
-          getOutcomeText(match.match_outcome)
+          getOutcomeText(match.match_data.match_outcome)
         ].join(',');
       })
     ].join('\n');
@@ -203,24 +209,6 @@ const MatchesTable: React.FC = () => {
       link.click();
       document.body.removeChild(link);
     }
-  };
-
-  const handlePlayerSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const searchTerm = e.target.value;
-    setPlayerSearch(searchTerm);
-
-    if (searchTerm && fuse) {
-      const results = fuse.search(searchTerm).slice(0, 5); // Limit to top 5 results
-      setSearchResults(results.map(result => result.item));
-    } else {
-      setSearchResults([]);
-    }
-  };
-
-  const handlePlayerSelect = (playerName: string) => {
-    setPlayerSearch('');
-    setSearchResults([]);
-    navigate(`/player/${encodeURIComponent(playerName)}`);
   };
 
   useEffect(() => {
@@ -316,43 +304,43 @@ const MatchesTable: React.FC = () => {
           </thead>
           <tbody>
             {filteredMatches.map(match => {
-              const { blueScore, redScore } = getScores(match);
+              const { blueScore, redScore } = getScores(match.match_data);
               return (
-                <tr key={match.id} className={getOutcomeClass(match.match_outcome)}>
+                <tr key={match.match_data.id} className={getOutcomeClass(match.match_data.match_outcome)}>
                   <td>
-                    {match.stats_url ? (
-                      <a href={match.stats_url} target="_blank" rel="noopener noreferrer" className="match-id-link">
-                        {match.match_id}
+                    {match.match_data.stats_url ? (
+                      <a href={match.match_data.stats_url} target="_blank" rel="noopener noreferrer" className="match-id-link">
+                        {match.match_data.match_id}
                       </a>
                     ) : (
-                      match.match_id
+                      match.match_data.match_id
                     )}
                   </td>
-                  <td>{formatDate(match.created_at)}</td>
-                  <td>{match.map}</td>
-                  <td>{match.server}</td>
+                  <td>{formatDate(match.match_data.created_at)}</td>
+                  <td>{match.match_data.map}</td>
+                  <td>{match.match_data.server}</td>
                   <td>
                     <div className="teams">
                       <div className="blue-team">
-                        {getTeamPlayers(match.blue_team).map((player, index) => (
+                        {match.blue_team_players.map((player, index) => (
                           <span 
                             key={index} 
                             className="player-name clickable" 
-                            onClick={() => handlePlayerClick(player)}
+                            onClick={() => handlePlayerClick(player.player_name)}
                           >
-                            {player}
+                            {player.player_name}
                           </span>
                         ))}
                       </div>
                       <span className="vs">vs</span>
                       <div className="red-team">
-                        {getTeamPlayers(match.red_team).map((player, index) => (
+                        {match.red_team_players.map((player, index) => (
                           <span 
                             key={index} 
                             className="player-name clickable" 
-                            onClick={() => handlePlayerClick(player)}
+                            onClick={() => handlePlayerClick(player.player_name)}
                           >
-                            {player}
+                            {player.player_name}
                           </span>
                         ))}
                       </div>
@@ -365,7 +353,7 @@ const MatchesTable: React.FC = () => {
                       <span className="red-score">{redScore}</span>
                     </div>
                   </td>
-                  <td>{getOutcomeText(match.match_outcome)}</td>
+                  <td>{getOutcomeText(match.match_data.match_outcome)}</td>
                 </tr>
               );
             })}
