@@ -5,7 +5,7 @@ use sea_orm::{DbBackend, EntityTrait, QueryFilter, ColumnTrait, Condition, State
 use sea_orm::prelude::Expr;
 use serde::Serialize;
 use crate::models::_entities::matches::{Entity as Matches, Column as MatchesColumn};
-use crate::models::_entities::players::{Entity as Players, Column as PlayersColumn};
+use crate::models::_entities::players::{Entity as Players, Column as PlayersColumn, Model as PlayerModel};
 
 #[debug_handler]
 pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
@@ -156,11 +156,79 @@ pub async fn get_versus_winrate(
     }))
 }*/
 
+#[derive(Serialize)]
+struct MatchWithPlayers {
+    match_data: crate::models::_entities::matches::Model,
+    blue_team_players: Vec<PlayerModel>,
+    red_team_players: Vec<PlayerModel>,
+}
+
+#[debug_handler]
+pub async fn list_with_players(State(ctx): State<AppContext>) -> Result<Response> {
+    // Get all matches
+    let matches = Matches::find()
+        .filter(MatchesColumn::GameType.eq("4v4"))
+        .filter(MatchesColumn::DeletedAt.is_null())
+        .all(&ctx.db)
+        .await?;
+
+    // Get all players
+    let players = Players::find()
+        .all(&ctx.db)
+        .await?;
+
+    // Create a map of discord_id to player for quick lookups
+    let player_map: std::collections::HashMap<String, PlayerModel> = players
+        .into_iter()
+        .filter_map(|p| {
+            p.discord_id.clone().map(|id| (id, p))
+        })
+        .collect();
+
+    // Combine match data with player data
+    let matches_with_players: Vec<MatchWithPlayers> = matches
+        .into_iter()
+        .map(|match_data| {
+            let blue_team_ids = match_data.blue_team
+                .clone()
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>();
+
+            let red_team_ids = match_data.red_team
+                .clone()
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>();
+
+            let blue_team_players = blue_team_ids
+                .iter()
+                .filter_map(|id| player_map.get(id).cloned())
+                .collect();
+
+            let red_team_players = red_team_ids
+                .iter()
+                .filter_map(|id| player_map.get(id).cloned())
+                .collect();
+
+            MatchWithPlayers {
+                match_data,
+                blue_team_players,
+                red_team_players,
+            }
+        })
+        .collect();
+
+    format::json(matches_with_players)
+}
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/matches")
         .add("/", get(list))
+        .add("/with-players", get(list_with_players))
         .add("/:id", get(get_one))
         .add("/echo", post(echo))
         .add("/player/:player_name", get(get_matches_by_player_name))

@@ -126,38 +126,20 @@ const PlayerMatches: React.FC = () => {
         });
 
         // Make parallel requests with retry logic
-        const [playerResponse, matchesResponse, eloHistoryResponse] = await Promise.all([
-          fetchWithRetry(`${baseUrl}/api/players/name/${encodedName}`, requestOptions),
-          fetchWithRetry(`${baseUrl}/api/matches/player/${encodedName}`, requestOptions),
-          fetchWithRetry(`${baseUrl}/api/player_elo/${encodedName}`, requestOptions)
-        ]);
+        const response = await fetchWithRetry(
+          `${baseUrl}/api/players/combined/${encodedName}`, 
+          requestOptions
+        );
 
-        // Check if any requests still failed after retries
-        if (!playerResponse.ok || !matchesResponse.ok || !eloHistoryResponse.ok) {
-          const errors = [];
-          if (!playerResponse.ok) {
-            errors.push(`Player data: ${await playerResponse.text().catch(() => 'Unknown error')}`);
-          }
-          if (!matchesResponse.ok) {
-            errors.push(`Matches data: ${await matchesResponse.text().catch(() => 'Unknown error')}`);
-          }
-          if (!eloHistoryResponse.ok) {
-            errors.push(`ELO data: ${await eloHistoryResponse.text().catch(() => 'Unknown error')}`);
-          }
-          throw new Error(`Requests failed after retries: ${errors.join(', ')}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch combined data: ${await response.text()}`);
         }
 
-        // Get all data in parallel
-        const [playerData, matchesData, eloHistoryData] = await Promise.all([
-          playerResponse.json(),
-          matchesResponse.json(),
-          eloHistoryResponse.json()
-        ]);
-
-        setPlayer(playerData);
-        setMatches(matchesData);
-        setFilteredMatches(matchesData);
-        setEloHistory(eloHistoryData);
+        const combinedData = await response.json();
+        setPlayer(combinedData.player);
+        setMatches(combinedData.matches);
+        setFilteredMatches(combinedData.matches);
+        setEloHistory(combinedData.elo_history);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
