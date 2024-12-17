@@ -35,6 +35,7 @@ interface Player {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  achievements: string;
 }
 
 interface EloHistory {
@@ -210,6 +211,17 @@ const PlayerMatches: React.FC = () => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
+  };
+
+  const parseAchievements = (achievements: string) => {
+    if (!achievements) return [];
+    return achievements.split(';').map(achievement => {
+      const match = achievement.match(/<:([^:]+):(\d+)>/);
+      return match ? {
+        name: match[1],
+        emojiId: match[2]
+      } : null;
+    }).filter(Boolean);
   };
 
   const getPlayerTeam = (match: Match, playerDiscordId: string | undefined): 'blue' | 'red' => {
@@ -544,7 +556,7 @@ const PlayerMatches: React.FC = () => {
           </div>
         </div>
         
-        <div className="bg-gray-800 rounded-lg p-4 w-[30%] h-[400px]">
+        <div className="bg-gray-800 rounded-lg p-4 w-[30%] h-[450px]">
           <table className="w-full text-gray-200">
             <tbody>
               <tr className="border-b border-gray-700">
@@ -586,6 +598,22 @@ const PlayerMatches: React.FC = () => {
               <tr>
                 <td className="py-2 text-gray-400">Draws</td>
                 <td className="py-2 text-right text-gray-400">{player?.pug_draws}</td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Achievements</td>
+                <td className="py-2 text-right">
+                  <div className="grid grid-cols-5 gap-1 justify-items-center">
+                    {player?.achievements && parseAchievements(player.achievements).map((achievement, index) => (
+                      <img
+                        key={index}
+                        src={`https://cdn.discordapp.com/emojis/${achievement.emojiId}.webp`}
+                        alt={achievement.name}
+                        title={achievement.name}
+                        className="w-6 h-6"
+                      />
+                    ))}
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
