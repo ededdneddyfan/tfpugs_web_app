@@ -3,19 +3,26 @@ import { Link } from "react-router-dom";
 
 interface Player {
   id: number;
+  discord_id: string;
   player_name: string;
   current_elo: number;
-  discord_id: string;
   pug_wins: number;
   pug_losses: number;
   pug_draws: number;
   is_active: boolean;
   active_rank: number | null;
   all_time_rank: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 type SortField = 'active_rank' | 'all_time_rank' | 'player_name' | 'current_elo' | 'pug_wins' | 'pug_losses' | 'pug_draws' | 'win_percentage';
 type SortDirection = 'asc' | 'desc';
+
+const getDiscordAvatarUrl = (discordId: string) => {
+  return `https://cdn.discordapp.com/avatars/${discordId}/avatar.png`;
+};
 
 const Leaderboard: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -158,16 +165,26 @@ const Leaderboard: React.FC = () => {
                 <td className="px-4 py-4">{player.active_rank || '-'}</td>
                 <td className="px-4 py-4">{player.all_time_rank}</td>
                 <td className="px-6 py-4">
-                  <Link 
-                    to={`/player/${player.player_name}`}
-                    className={`${
-                      player.is_active 
-                        ? 'text-blue-400 hover:text-blue-300' 
-                        : 'text-blue-400/50 hover:text-blue-300/50'
-                    }`}
-                  >
-                    {player.player_name}
-                  </Link>
+                  <div className="flex items-center space-x-3">
+                    <img 
+                      src={getDiscordAvatarUrl(player.discord_id)}
+                      alt={`${player.player_name}'s avatar`}
+                      className="w-8 h-8 rounded-full"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                      }}
+                    />
+                    <Link 
+                      to={`/player/${player.player_name}`}
+                      className={`${
+                        player.is_active 
+                          ? 'text-blue-400 hover:text-blue-300' 
+                          : 'text-blue-400/50 hover:text-blue-300/50'
+                      }`}
+                    >
+                      {player.player_name}
+                    </Link>
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">{player.current_elo}</td>
                 <td className="px-6 py-4 text-right text-green-400">{player.pug_wins}</td>

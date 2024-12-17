@@ -5,6 +5,7 @@ import MatchesTable from "./components/MatchesTable";
 import PlayerMatches from "./components/PlayerMatches";
 import Leaderboard from "./components/Leaderboard";
 import About from "./components/About";
+import pugsLogo from "./assets/PUGSLOGO.png";
 
 import "./index.css";
 
@@ -12,28 +13,26 @@ const Navigation: React.FC = () => {
   return (
     <nav className="bg-gray-800 shadow-lg">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center justify-center flex-1">
-            <div className="flex space-x-8">
-              <Link 
-                to="/" 
-                className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Matches
-              </Link>
-              <Link 
-                to="/leaderboard" 
-                className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Leaderboard
-              </Link>
-              <Link 
-                to="/about" 
-                className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              >
-                About
-              </Link>
-            </div>
+        <div className="flex items-center justify-center h-16">
+          <div className="flex space-x-8">
+            <Link 
+              to="/" 
+              className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Matches
+            </Link>
+            <Link 
+              to="/leaderboard" 
+              className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Leaderboard
+            </Link>
+            <Link 
+              to="/about" 
+              className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+            >
+              About
+            </Link>
           </div>
         </div>
       </div>
@@ -44,6 +43,15 @@ const Navigation: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
+      <div className="bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 py-2 flex justify-center">
+          <img 
+            src={pugsLogo}
+            alt="PUGS Logo" 
+            className="w-1/2"
+          />
+        </div>
+      </div>
       <Navigation />
       <div className="flex justify-center my-4">
         <iframe 
