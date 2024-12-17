@@ -216,10 +216,11 @@ const PlayerMatches: React.FC = () => {
   const parseAchievements = (achievements: string) => {
     if (!achievements) return [];
     return achievements.split(';').map(achievement => {
-      const match = achievement.match(/<:([^:]+):(\d+)>/);
+      const match = achievement.match(/<(a?):([^:]+):(\d+)>/);
       return match ? {
-        name: match[1],
-        emojiId: match[2]
+        name: match[2],
+        emojiId: match[3],
+        animated: match[1] === 'a'
       } : null;
     }).filter(Boolean);
   };
@@ -606,7 +607,7 @@ const PlayerMatches: React.FC = () => {
                     {player?.achievements && parseAchievements(player.achievements).map((achievement, index) => (
                       <img
                         key={index}
-                        src={`https://cdn.discordapp.com/emojis/${achievement.emojiId}.webp`}
+                        src={`https://cdn.discordapp.com/emojis/${achievement.emojiId}.webp${achievement.animated ? '?animated=true' : ''}`}
                         alt={achievement.name}
                         title={achievement.name}
                         className="w-6 h-6"
