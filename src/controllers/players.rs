@@ -14,6 +14,15 @@ struct PlayerCombinedData {
     elo_history: Vec<player_elo::Model>,
 }
 
+#[derive(Serialize)]
+struct PlayerWithRanks {
+    #[serde(flatten)]
+    player: crate::models::_entities::players::Model,
+    is_active: bool,
+    active_rank: Option<i64>,
+    all_time_rank: i64,
+}
+
 #[debug_handler]
 pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Entity::find().all(&ctx.db).await?)
@@ -59,11 +68,36 @@ pub async fn get_by_name(Path(name): Path<String>, State(ctx): State<AppContext>
 
 #[debug_handler]
 pub async fn list_by_elo(State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(Entity::find()
-        .filter(Column::DeletedAt.is_null())
-        .order_by_desc(Column::CurrentElo)
+    let statement = Statement::from_sql_and_values(
+        DbBackend::MySql,
+        r#"
+        WITH active_players AS (
+        SELECT p.discord_id, EXISTS(
+                            SELECT 1 FROM matches m 
+                            WHERE (FIND_IN_SET(p.discord_id, m.blue_team) > 0 
+                            OR FIND_IN_SET(p.discord_id, m.red_team) > 0)
+                            AND m.created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK)
+                        ) as is_active
+            FROM players p
+        )
+
+        SELECT p.*, active_players.is_active, ROW_NUMBER() OVER (ORDER BY p.current_elo DESC) as all_time_rank, CASE WHEN is_active THEN RANK() OVER 
+                    (ORDER BY CASE WHEN is_active IS FALSE THEN 1 ELSE 0 END, p.current_elo DESC) END as active_rank
+        FROM players p
+        INNER JOIN active_players on p.discord_id = active_players.discord_id
+        WHERE p.deleted_at is NULL and (p.pug_wins + p.pug_draws + p.pug_draws >= 10)
+        ORDER BY p.current_elo desc;
+        "#,
+        []
+    );
+
+    let players = Entity::find()
+        .from_raw_sql(statement)
+        .into_json()
         .all(&ctx.db)
-        .await?)
+        .await?;
+
+    format::json(players)
 }
 
 #[debug_handler]
