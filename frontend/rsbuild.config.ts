@@ -17,4 +17,10 @@ export default defineConfig({
       },
     },
   },
+  source: {
+    define: {
+      'process.env.VITE_PUBLIC_POSTHOG_KEY': JSON.stringify(process.env.VITE_PUBLIC_POSTHOG_KEY),
+      'process.env.VITE_PUBLIC_POSTHOG_HOST': JSON.stringify(process.env.VITE_PUBLIC_POSTHOG_HOST),
+    },
+  },
 });

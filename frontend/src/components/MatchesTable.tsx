@@ -30,6 +30,15 @@ interface Match {
 
 type SortKey = 'created_at' | 'map';
 type SortOrder = 'asc' | 'desc';
+
+interface PaginatedResponse {
+  data: Match[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
 const MatchesTable: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
@@ -44,6 +53,11 @@ const MatchesTable: React.FC = () => {
   const [playerSearch, setPlayerSearch] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Player[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [pageInput, setPageInput] = useState<string>('1');
 
   const navigate = useNavigate();
 
@@ -87,15 +101,19 @@ const MatchesTable: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const matchesResponse = await fetch('/api/matches/with-players');
+        const matchesResponse = await fetch(
+          `/api/matches/with-players?page=${page}&per_page=${perPage}`
+        );
 
         if (!matchesResponse.ok) {
           throw new Error('Failed to fetch data');
         }
 
-        const matchesData = await matchesResponse.json();
-        setMatches(matchesData);
-        setFilteredMatches(matchesData);
+        const paginatedData: PaginatedResponse = await matchesResponse.json();
+        setMatches(paginatedData.data);
+        setFilteredMatches(paginatedData.data);
+        setTotalPages(paginatedData.total_pages);
+        setTotalMatches(paginatedData.total);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -105,7 +123,7 @@ const MatchesTable: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [page, perPage]);
 
   useEffect(() => {
     let filtered = matches.filter(match => {
@@ -224,6 +242,27 @@ const MatchesTable: React.FC = () => {
     };
   }, []);
 
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPageInput(value);
+  };
+
+  const handlePageInputSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const newPage = parseInt(pageInput);
+      if (!isNaN(newPage) && newPage >= 1 && newPage <= totalPages) {
+        setPage(newPage);
+      } else {
+        setPageInput(page.toString()); // Reset to current page if invalid
+      }
+    }
+  };
+
+  // Update pageInput when page changes
+  useEffect(() => {
+    setPageInput(page.toString());
+  }, [page]);
+
   if (loading) return <p className="loading">Loading matches...</p>;
   if (error) return <p className="error">{error}</p>;
 
@@ -284,6 +323,69 @@ const MatchesTable: React.FC = () => {
           </label>
         </div>
         <button onClick={downloadCSV} className="download-csv">Download CSV</button>
+      </div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Rows per page:</span>
+          <select
+            value={perPage}
+            onChange={(e) => {
+              setPerPage(Number(e.target.value));
+              setPage(1);
+            }}
+            className="bg-gray-700 text-gray-200 rounded px-2 py-1"
+          >
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={totalMatches}>All</option>
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(1)}
+            disabled={page === 1}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="First Page"
+          >
+            ««
+          </button>
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Previous Page"
+          >
+            «
+          </button>
+          <span className="text-gray-400">Page</span>
+          <input
+            type="text"
+            value={pageInput}
+            onChange={handlePageInputChange}
+            onKeyDown={handlePageInputSubmit}
+            className="w-16 px-2 py-1 bg-gray-700 text-gray-200 rounded text-center"
+            aria-label="Page number"
+          />
+          <span className="text-gray-400">of {totalPages}</span>
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Next Page"
+          >
+            »
+          </button>
+          <button
+            onClick={() => setPage(totalPages)}
+            disabled={page === totalPages}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Last Page"
+          >
+            »»
+          </button>
+        </div>
       </div>
       <div className="matches-table-wrapper">
         <table className="matches-table">

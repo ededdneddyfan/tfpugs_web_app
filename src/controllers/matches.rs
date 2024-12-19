@@ -1,9 +1,11 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
+use axum::extract::Query;
 use loco_rs::prelude::*;
-use sea_orm::{DbBackend, EntityTrait, QueryFilter, ColumnTrait, Condition, Statement};
+use sea_orm::{DbBackend, EntityTrait, QueryFilter, ColumnTrait, Condition, Statement, QueryOrder, PaginatorTrait};
 use sea_orm::prelude::Expr;
 use serde::Serialize;
+use serde::Deserialize;
 use crate::models::_entities::matches::{Entity as Matches, Column as MatchesColumn};
 use crate::models::_entities::players::{Entity as Players, Column as PlayersColumn, Model as PlayerModel};
 
@@ -163,29 +165,47 @@ struct MatchWithPlayers {
     red_team_players: Vec<PlayerModel>,
 }
 
+#[derive(Deserialize)]
+struct PaginationParams {
+    page: Option<u64>,
+    per_page: Option<u64>,
+}
+
+#[derive(Serialize)]
+struct PaginatedResponse<T> {
+    data: Vec<T>,
+    total: u64,
+    page: u64,
+    per_page: u64,
+    total_pages: u64,
+}
+
 #[debug_handler]
-pub async fn list_with_players(State(ctx): State<AppContext>) -> Result<Response> {
-    // Get all matches
-    let matches = Matches::find()
+pub async fn list_with_players(
+    Query(params): Query<PaginationParams>,
+    State(ctx): State<AppContext>
+) -> Result<Response> {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+
+    // Get paginated matches
+    let paginator = Matches::find()
         .filter(MatchesColumn::GameType.eq("4v4"))
         .filter(MatchesColumn::DeletedAt.is_null())
-        .all(&ctx.db)
-        .await?;
+        .order_by_desc(MatchesColumn::CreatedAt)
+        .paginate(&ctx.db, per_page);
 
-    // Get all players
-    let players = Players::find()
-        .all(&ctx.db)
-        .await?;
+    let total_pages = paginator.num_pages().await?;
+    let total = paginator.num_items().await?;
+    let matches = paginator.fetch_page(page - 1).await?;
 
-    // Create a map of discord_id to player for quick lookups
+    // Rest of the player mapping logic remains the same
+    let players = Players::find().all(&ctx.db).await?;
     let player_map: std::collections::HashMap<String, PlayerModel> = players
         .into_iter()
-        .filter_map(|p| {
-            p.discord_id.clone().map(|id| (id, p))
-        })
+        .filter_map(|p| p.discord_id.clone().map(|id| (id, p)))
         .collect();
 
-    // Combine match data with player data
     let matches_with_players: Vec<MatchWithPlayers> = matches
         .into_iter()
         .map(|match_data| {
@@ -221,7 +241,13 @@ pub async fn list_with_players(State(ctx): State<AppContext>) -> Result<Response
         })
         .collect();
 
-    format::json(matches_with_players)
+    format::json(PaginatedResponse {
+        data: matches_with_players,
+        total,
+        page,
+        per_page,
+        total_pages,
+    })
 }
 
 pub fn routes() -> Routes {
