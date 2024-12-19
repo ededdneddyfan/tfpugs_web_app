@@ -1,13 +1,24 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import posthog from 'posthog-js';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import MatchesTable from "./components/MatchesTable";
 import PlayerMatches from "./components/PlayerMatches";
 import Leaderboard from "./components/Leaderboard";
 import About from "./components/About";
 import pugsLogo from "./assets/PUGSLOGO.png";
-
 import "./index.css";
+
+// Initialize PostHog at the top of the file, before any components
+posthog.init(
+  process.env.VITE_PUBLIC_POSTHOG_KEY || '',
+  {
+    api_host: process.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    loaded: (posthog) => {
+      if (process.env.NODE_ENV === 'development') posthog.debug();
+    }
+  }
+);
 
 const Navigation: React.FC = () => {
   return (
