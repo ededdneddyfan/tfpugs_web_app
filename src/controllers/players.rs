@@ -126,8 +126,9 @@ pub async fn get_player_combined_data(
     let matches_statement = Statement::from_sql_and_values(
         DbBackend::MySql,
         r#"SELECT * FROM matches WHERE 
-           FIND_IN_SET(?, blue_team) > 0 OR 
-           FIND_IN_SET(?, red_team) > 0 
+           (FIND_IN_SET(?, blue_team) > 0 OR 
+           FIND_IN_SET(?, red_team) > 0) 
+           AND deleted_at IS NULL
            ORDER BY created_at DESC"#,
         [player_discord_id.clone().into(), player_discord_id.into()]
     );
