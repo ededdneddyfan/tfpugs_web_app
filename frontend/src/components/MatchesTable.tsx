@@ -462,6 +462,70 @@ const MatchesTable: React.FC = () => {
           </tbody>
         </table>
       </div>
+      
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Rows per page:</span>
+          <select
+            value={perPage}
+            onChange={(e) => {
+              setPerPage(Number(e.target.value));
+              setPage(1);
+            }}
+            className="bg-gray-700 text-gray-200 rounded px-2 py-1"
+          >
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={totalMatches}>All</option>
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(1)}
+            disabled={page === 1}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="First Page"
+          >
+            ««
+          </button>
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Previous Page"
+          >
+            «
+          </button>
+          <span className="text-gray-400">Page</span>
+          <input
+            type="text"
+            value={pageInput}
+            onChange={handlePageInputChange}
+            onKeyDown={handlePageInputSubmit}
+            className="w-16 px-2 py-1 bg-gray-700 text-gray-200 rounded text-center"
+            aria-label="Page number"
+          />
+          <span className="text-gray-400">of {totalPages}</span>
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Next Page"
+          >
+            »
+          </button>
+          <button
+            onClick={() => setPage(totalPages)}
+            disabled={page === totalPages}
+            className="px-3 py-1 bg-gray-700 text-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Last Page"
+          >
+            »»
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
