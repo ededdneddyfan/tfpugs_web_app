@@ -1,7 +1,7 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
 use loco_rs::prelude::*;
-use sea_orm::{DbBackend, EntityTrait, QueryOrder, Statement};
+use sea_orm::{DbBackend, EntityTrait, Statement};
 use serde::Serialize;
 
 use crate::models::_entities::players::{Entity, Column};
@@ -12,15 +12,6 @@ struct PlayerCombinedData {
     player: Option<crate::models::_entities::players::Model>,
     matches: Vec<matches::Model>,
     elo_history: Vec<player_elo::Model>,
-}
-
-#[derive(Serialize)]
-struct PlayerWithRanks {
-    #[serde(flatten)]
-    player: crate::models::_entities::players::Model,
-    is_active: bool,
-    active_rank: Option<i64>,
-    all_time_rank: i64,
 }
 
 #[debug_handler]
@@ -167,8 +158,8 @@ pub fn routes() -> Routes {
         .prefix("api/players")
         .add("/", get(list))
         .add("/by-elo", get(list_by_elo))
-        .add("/:id", get(get_one))
-        .add("/discord/:discord_id", get(get_by_discord_id))
-        .add("/name/:name", get(get_by_name))
-        .add("/combined/:name", get(get_player_combined_data))
+        .add("/{id}", get(get_one))
+        .add("/discord/{discord_id}", get(get_by_discord_id))
+        .add("/name/{name}", get(get_by_name))
+        .add("/combined/{name}", get(get_player_combined_data))
 }

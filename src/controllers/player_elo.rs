@@ -47,5 +47,5 @@ pub fn routes() -> Routes {
         .prefix("api/player_elo")
         .add("/", get(hello))
         .add("/echo", post(echo))
-        .add("/:player_name", get(get_player_elo_by_player_name))
+        .add("/{player_name}", get(get_player_elo_by_player_name))
 }

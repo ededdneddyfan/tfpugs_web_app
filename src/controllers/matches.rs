@@ -166,7 +166,7 @@ struct MatchWithPlayers {
 }
 
 #[derive(Deserialize)]
-struct PaginationParams {
+pub struct PaginationParams {
     page: Option<u64>,
     per_page: Option<u64>,
 }
@@ -255,9 +255,9 @@ pub fn routes() -> Routes {
         .prefix("api/matches")
         .add("/", get(list))
         .add("/with-players", get(list_with_players))
-        .add("/:id", get(get_one))
+        .add("/{id}", get(get_one))
         .add("/echo", post(echo))
-        .add("/player/:player_name", get(get_matches_by_player_name))
-        .add("/same-team-winrate/:player1_name/:player2_name", get(get_same_team_winrate))
+        .add("/player/{player_name}", get(get_matches_by_player_name))
+        .add("/same-team-winrate/{player1_name}/{player2_name}", get(get_same_team_winrate))
         //.add("/versus-winrate/:player1_name/:player2_name", get(get_versus_winrate))
 }
