@@ -63,21 +63,34 @@ pub async fn list_by_elo(State(ctx): State<AppContext>) -> Result<Response> {
         DbBackend::MySql,
         r#"
         WITH active_players AS (
-        SELECT p.discord_id, EXISTS(
-                            SELECT 1 FROM matches m 
-                            WHERE (FIND_IN_SET(p.discord_id, m.blue_team) > 0 
-                            OR FIND_IN_SET(p.discord_id, m.red_team) > 0)
-                            AND m.created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK)
-                        ) as is_active
+            SELECT DISTINCT m.blue_team, m.red_team
+            FROM matches m
+            WHERE m.created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK)
+            AND m.deleted_at IS NULL
+        ),
+        player_activity AS (
+            SELECT p.discord_id,
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM active_players ap
+                    WHERE FIND_IN_SET(p.discord_id, ap.blue_team) > 0 
+                    OR FIND_IN_SET(p.discord_id, ap.red_team) > 0
+                    LIMIT 1
+                ) THEN TRUE ELSE FALSE END as is_active
             FROM players p
+            WHERE p.deleted_at IS NULL
+            AND (p.pug_wins + p.pug_draws + p.pug_draws >= 10)
         )
 
-        SELECT p.*, active_players.is_active, ROW_NUMBER() OVER (ORDER BY p.current_elo DESC) as all_time_rank, CASE WHEN is_active THEN RANK() OVER 
-                    (ORDER BY CASE WHEN is_active IS FALSE THEN 1 ELSE 0 END, p.current_elo DESC) END as active_rank
+        SELECT 
+            p.*,
+            pa.is_active,
+            ROW_NUMBER() OVER (ORDER BY p.current_elo DESC) as all_time_rank,
+            CASE WHEN pa.is_active 
+                THEN RANK() OVER (ORDER BY CASE WHEN pa.is_active IS FALSE THEN 1 ELSE 0 END, p.current_elo DESC)
+            END as active_rank
         FROM players p
-        INNER JOIN active_players on p.discord_id = active_players.discord_id
-        WHERE p.deleted_at is NULL and (p.pug_wins + p.pug_draws + p.pug_draws >= 10)
-        ORDER BY p.current_elo desc;
+        INNER JOIN player_activity pa ON p.discord_id = pa.discord_id
+        ORDER BY p.current_elo DESC;
         "#,
         []
     );

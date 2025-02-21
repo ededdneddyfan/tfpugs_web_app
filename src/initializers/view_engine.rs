@@ -26,10 +26,16 @@ impl Initializer for ViewEngineInitializer {
                 .customize(|bundle| bundle.set_use_isolating(false))
                 .build()
                 .map_err(|e| Error::string(&e.to_string()))?;
+            #[cfg(debug_assertions)]
             tera_engine
                 .tera
                 .lock()
-                .unwrap()
+                .expect("Failed to lock Tera")
+                .register_function("t", FluentLoader::new(arc));
+
+            #[cfg(not(debug_assertions))]
+            tera_engine
+                .tera
                 .register_function("t", FluentLoader::new(arc));
             info!("locales loaded");
         }

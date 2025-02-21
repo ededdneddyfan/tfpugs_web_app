@@ -6,8 +6,8 @@ use shuttle_runtime::DeploymentMetadata;
 use loco_rs::config::Config;
 use std::path::PathBuf;
 use tower_http::services::ServeDir;
-use axum::Router;
 use tower_http::trace::TraceLayer;
+use tower_http::services::ServeFile;
 
 #[shuttle_runtime::main]
 async fn main(
@@ -28,7 +28,15 @@ async fn main(
     // Merge the API router with the static file serving
     let app = router  // API routes first
         .layer(TraceLayer::new_for_http())
-        .fallback_service(ServeDir::new("frontend/dist").append_index_html_on_directories(true));
+        .fallback_service(
+            ServeDir::new("frontend/dist")
+                .append_index_html_on_directories(true)
+                .fallback(
+                    ServeDir::new("frontend/dist")
+                        .append_index_html_on_directories(true)
+                        .not_found_service(ServeFile::new("frontend/dist/index.html"))
+                )
+        );
     
     Ok(app.into())
 }
