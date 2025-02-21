@@ -3,12 +3,14 @@
 include = [
   "config/production.yaml",
   "frontend/dist/*",
-  "assets/*"
+  "assets/*",
+  "frontend/.env"
 ]
 
 [build]
 assets = [
   "config/production.yaml",
   "frontend/dist/*",
-  "assets/*"
+  "assets/*",
+  "frontend/.env"
 ]

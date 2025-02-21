@@ -26,7 +26,16 @@ interface Player {
   discord_id: string;
   player_name: string;
   current_elo: number;
-  // Add other player fields as needed
+  pug_wins: number;
+  pug_losses: number;
+  pug_draws: number;
+  is_active: boolean;
+  active_rank: number | null;
+  all_time_rank: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  achievements: string;
 }
 
 interface EloHistory {
@@ -119,13 +128,25 @@ const PlayerMatches: React.FC = () => {
 
         const baseUrl = window.location.origin;
         console.log('Base URL:', baseUrl);
-        console.log('Full URLs:', {
-          player: `${baseUrl}/api/players/name/${encodedName}`,
-          matches: `${baseUrl}/api/matches/player/${encodedName}`,
-          elo: `${baseUrl}/api/player_elo/${encodedName}`
-        });
 
-        // Make parallel requests with retry logic
+        // Get player data from by-elo endpoint
+        const playersResponse = await fetchWithRetry(
+          `${baseUrl}/api/players/by-elo`,
+          requestOptions
+        );
+
+        if (!playersResponse.ok) {
+          throw new Error(`Failed to fetch players: ${await playersResponse.text()}`);
+        }
+
+        const players = await playersResponse.json();
+        const player = players.find(p => p.player_name.toLowerCase() === playerName?.toLowerCase());
+
+        if (!player) {
+          throw new Error('Player not found');
+        }
+
+        // Get matches and elo history
         const response = await fetchWithRetry(
           `${baseUrl}/api/players/combined/${encodedName}`, 
           requestOptions
@@ -136,7 +157,7 @@ const PlayerMatches: React.FC = () => {
         }
 
         const combinedData = await response.json();
-        setPlayer(combinedData.player);
+        setPlayer(player);
         setMatches(combinedData.matches);
         setFilteredMatches(combinedData.matches);
         setEloHistory(combinedData.elo_history);
@@ -190,6 +211,18 @@ const PlayerMatches: React.FC = () => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
+  };
+
+  const parseAchievements = (achievements: string) => {
+    if (!achievements) return [];
+    return achievements.split(';').map(achievement => {
+      const match = achievement.match(/<(a?):([^:]+):(\d+)>/);
+      return match ? {
+        name: match[2],
+        emojiId: match[3],
+        animated: match[1] === 'a'
+      } : null;
+    }).filter(Boolean);
   };
 
   const getPlayerTeam = (match: Match, playerDiscordId: string | undefined): 'blue' | 'red' => {
@@ -258,6 +291,47 @@ const PlayerMatches: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  const calculateRank = (elo: number): string => {
+    const RANK_BOUNDARIES_LIST = [720, 950, 1190, 1440, 1700, 1960, 2230, 2510, 2800, 3100];
+    
+    if (elo >= RANK_BOUNDARIES_LIST[RANK_BOUNDARIES_LIST.length - 1]) {
+      return 'S';
+    }
+    
+    for (let i = 0; i < RANK_BOUNDARIES_LIST.length; i++) {
+      if (elo <= RANK_BOUNDARIES_LIST[i]) {
+        return (i + 1).toString();
+      }
+    }
+    
+    return '1'; // Default for any elo below first boundary
+  };
+
+  const getRankColor = (rank: string): string => {
+    switch (rank) {
+      case '1':
+      case '2':
+      case '3':
+        return 'text-green-400';
+      case '4':
+      case '5':
+      case '6':
+        return 'text-yellow-400';
+      case '7':
+        return 'text-orange-400';
+      case '8':
+        return 'text-orange-500';
+      case '9':
+        return 'text-orange-600';
+      case '10':
+        return 'text-red-500';
+      case 'S':
+        return 'text-blue-400';
+      default:
+        return 'text-gray-400';
     }
   };
 
@@ -458,18 +532,92 @@ const PlayerMatches: React.FC = () => {
     };
 
     return (
-      <div style={{ 
-        height: '400px', 
-        width: '100%', 
-        backgroundColor: 'black', 
-        padding: '20px', 
-        borderRadius: '10px',
-        boxShadow: 'none',
-        position: 'relative'
-      }}>
-        <Line data={data} options={options} ref={chartRef} />
-        <div className="chart-controls">
-          <button onClick={resetZoom} className="reset-zoom-button">Reset Zoom</button>
+      <div className="flex gap-8">
+        <div style={{ 
+          height: '400px', 
+          width: '70%', 
+          backgroundColor: 'black', 
+          padding: '20px', 
+          borderRadius: '10px',
+          boxShadow: 'none',
+          position: 'relative'
+        }}>
+          <Line data={data} options={options} ref={chartRef} />
+          <div style={{
+            position: 'absolute',
+            top: '30px',
+            right: '40px'
+          }}>
+            <button 
+              onClick={resetZoom} 
+              className="px-2 py-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 text-sm"
+            >
+              Reset Zoom
+            </button>
+          </div>
+        </div>
+        
+        <div className="bg-gray-800 rounded-lg p-4 w-[30%] h-[450px]">
+          <table className="w-full text-gray-200">
+            <tbody>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Current ELO</td>
+                <td className="py-2 text-right">{player?.current_elo}</td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Visual Rank</td>
+                <td className="py-2 text-right">
+                  <span className={`font-bold ${player ? getRankColor(calculateRank(player.current_elo)) : 'text-gray-400'}`}>
+                    {player ? calculateRank(player.current_elo) : '-'}
+                  </span>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Active Rank</td>
+                <td className="py-2 text-right">{player?.active_rank || '-'}</td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">All-time Rank</td>
+                <td className="py-2 text-right">{player?.all_time_rank}</td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Status</td>
+                <td className="py-2 text-right">
+                  <span className={`px-2 py-1 rounded ${player?.is_active ? 'bg-green-500' : 'bg-gray-500'}`}>
+                    {player?.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Wins</td>
+                <td className="py-2 text-right text-green-400">{player?.pug_wins}</td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Losses</td>
+                <td className="py-2 text-right text-red-400">{player?.pug_losses}</td>
+              </tr>
+              <tr>
+                <td className="py-2 text-gray-400">Draws</td>
+                <td className="py-2 text-right text-gray-400">{player?.pug_draws}</td>
+              </tr>
+              <tr className="border-b border-gray-700">
+                <td className="py-2 text-gray-400">Achievements</td>
+                <td className="py-2 text-right">
+                  <div className="grid grid-cols-5 gap-1 justify-items-center">
+                    {player?.achievements && parseAchievements(player.achievements).map((achievement, index) => (
+                      <img
+                        key={index}
+                        src={`https://cdn.discordapp.com/emojis/${achievement.emojiId}.webp${achievement.animated ? '?animated=true' : ''}`}
+                        alt={achievement.name}
+                        title={achievement.name}
+                        className="w-6 h-6"
+                      />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -486,8 +634,7 @@ const PlayerMatches: React.FC = () => {
 
   return (
     <div className="matches-container">
-      <h3 className="matches-title">Match History for {playerName}</h3>
-      <h2 className="current-elo">Current ELO: {player ? player.current_elo : 'N/A'}</h2>
+      <h3 className="matches-title">Summary for {playerName}</h3>
       <Link to="/" className="back-button">Back to All Matches</Link>
       
       {/* ELO History Chart */}

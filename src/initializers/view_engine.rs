@@ -1,4 +1,5 @@
-use axum::{async_trait, Extension, Router as AxumRouter};
+use async_trait::async_trait;
+use axum::{Extension, Router as AxumRouter};
 use fluent_templates::{ArcLoader, FluentLoader};
 use loco_rs::{
     app::{AppContext, Initializer},
@@ -25,6 +26,14 @@ impl Initializer for ViewEngineInitializer {
                 .customize(|bundle| bundle.set_use_isolating(false))
                 .build()
                 .map_err(|e| Error::string(&e.to_string()))?;
+            #[cfg(debug_assertions)]
+            tera_engine
+                .tera
+                .lock()
+                .expect("Failed to lock Tera")
+                .register_function("t", FluentLoader::new(arc));
+
+            #[cfg(not(debug_assertions))]
             tera_engine
                 .tera
                 .register_function("t", FluentLoader::new(arc));

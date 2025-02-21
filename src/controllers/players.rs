@@ -1,7 +1,7 @@
 #![allow(clippy::unused_async)]
 use axum::debug_handler;
 use loco_rs::prelude::*;
-use sea_orm::{DbBackend, EntityTrait, QueryOrder, Statement};
+use sea_orm::{DbBackend, EntityTrait, Statement};
 use serde::Serialize;
 
 use crate::models::_entities::players::{Entity, Column};
@@ -59,11 +59,49 @@ pub async fn get_by_name(Path(name): Path<String>, State(ctx): State<AppContext>
 
 #[debug_handler]
 pub async fn list_by_elo(State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(Entity::find()
-        .filter(Column::DeletedAt.is_null())
-        .order_by_desc(Column::CurrentElo)
+    let statement = Statement::from_sql_and_values(
+        DbBackend::MySql,
+        r#"
+        WITH active_players AS (
+            SELECT DISTINCT m.blue_team, m.red_team
+            FROM matches m
+            WHERE m.created_at >= DATE_SUB(NOW(), INTERVAL 2 WEEK)
+            AND m.deleted_at IS NULL
+        ),
+        player_activity AS (
+            SELECT p.discord_id,
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM active_players ap
+                    WHERE FIND_IN_SET(p.discord_id, ap.blue_team) > 0 
+                    OR FIND_IN_SET(p.discord_id, ap.red_team) > 0
+                    LIMIT 1
+                ) THEN TRUE ELSE FALSE END as is_active
+            FROM players p
+            WHERE p.deleted_at IS NULL
+            AND (p.pug_wins + p.pug_draws + p.pug_draws >= 10)
+        )
+
+        SELECT 
+            p.*,
+            pa.is_active,
+            ROW_NUMBER() OVER (ORDER BY p.current_elo DESC) as all_time_rank,
+            CASE WHEN pa.is_active 
+                THEN RANK() OVER (ORDER BY CASE WHEN pa.is_active IS FALSE THEN 1 ELSE 0 END, p.current_elo DESC)
+            END as active_rank
+        FROM players p
+        INNER JOIN player_activity pa ON p.discord_id = pa.discord_id
+        ORDER BY p.current_elo DESC;
+        "#,
+        []
+    );
+
+    let players = Entity::find()
+        .from_raw_sql(statement)
+        .into_json()
         .all(&ctx.db)
-        .await?)
+        .await?;
+
+    format::json(players)
 }
 
 #[debug_handler]
@@ -92,8 +130,9 @@ pub async fn get_player_combined_data(
     let matches_statement = Statement::from_sql_and_values(
         DbBackend::MySql,
         r#"SELECT * FROM matches WHERE 
-           FIND_IN_SET(?, blue_team) > 0 OR 
-           FIND_IN_SET(?, red_team) > 0 
+           (FIND_IN_SET(?, blue_team) > 0 OR 
+           FIND_IN_SET(?, red_team) > 0) 
+           AND deleted_at IS NULL
            ORDER BY created_at DESC"#,
         [player_discord_id.clone().into(), player_discord_id.into()]
     );
@@ -132,8 +171,8 @@ pub fn routes() -> Routes {
         .prefix("api/players")
         .add("/", get(list))
         .add("/by-elo", get(list_by_elo))
-        .add("/:id", get(get_one))
-        .add("/discord/:discord_id", get(get_by_discord_id))
-        .add("/name/:name", get(get_by_name))
-        .add("/combined/:name", get(get_player_combined_data))
+        .add("/{id}", get(get_one))
+        .add("/discord/{discord_id}", get(get_by_discord_id))
+        .add("/name/{name}", get(get_by_name))
+        .add("/combined/{name}", get(get_player_combined_data))
 }
